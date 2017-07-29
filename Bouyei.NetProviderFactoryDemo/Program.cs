@@ -13,7 +13,7 @@ namespace Bouyei.NetProviderFactoryDemo
         {
             int port = 13145;
             //服务端
-            NetServerProvider serverSocket = NetServerProvider.CreateNetServierProvider();
+            NetServerProvider serverSocket = NetServerProvider.CreateNetServerProvider();
 
             //已经截取接收到的真实数据
             serverSocket.ReceiveHanlder = new OnReceiveHandler((sToken, buffer) =>
