@@ -13,7 +13,7 @@ namespace Bouyei.NetProviderFactoryDemo
         {
             int port = 13145;
             //服务端
-            NetServerProvider serverSocket = new NetServerProvider();
+            NetServerProvider serverSocket = NetServerProvider.CreateNetServierProvider();
 
             //已经截取接收到的真实数据
             serverSocket.ReceiveHanlder = new OnReceiveHandler((sToken, buffer) =>
@@ -36,7 +36,7 @@ namespace Bouyei.NetProviderFactoryDemo
                 Console.WriteLine("已启动服务。。。");
 
                 //客户端
-                NetClientProvider clientSocket = new NetClientProvider();
+                NetClientProvider clientSocket = NetClientProvider.CreateNetClientProvider();
                 clientSocket.ReceiveHanlder = new OnReceiveHandler((sToken, buffer) =>
                 {
                     Console.WriteLine("client:from server[" + Encoding.UTF8.GetString(buffer));

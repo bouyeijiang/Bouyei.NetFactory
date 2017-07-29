@@ -15,5 +15,20 @@ namespace Bouyei.NetProviderFactory
 {
    public interface INetServerProvider
     {
+        OnReceiveHandler ReceiveHanlder { get; set; }
+
+        OnSentHandler SentHanlder { get; set; }
+
+        OnAcceptHandler AcceptHandler { get; set; }
+
+        OnReceiveOffsetHandler ReceiveOffsetHanlder { get; set; }
+
+        OnDisconnectedHandler DisconnectedHanlder { get; set; }
+
+        bool Start(int port, string ip = "0.0.0.0");
+
+        void Send(SocketToken sToken, byte[] buffer);
+
+        void Stop();
     }
 }

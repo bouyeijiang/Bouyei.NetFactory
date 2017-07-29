@@ -90,7 +90,7 @@ namespace Bouyei.NetProviderFactory
         }
 
         private OnDisconnectedHandler _disconnectedHandler = null;
-        public OnDisconnectedHandler DisconnectedHandler
+        public OnDisconnectedHandler DisconnectedHanlder
         {
             get { return _disconnectedHandler; }
             set
@@ -145,6 +145,12 @@ namespace Bouyei.NetProviderFactory
             {
                 udpClientProvider = new UdpClientProvider();
             }
+        }
+
+        public static NetClientProvider CreateNetClientProvider(ProviderType netProviderType = ProviderType.Tcp,
+             int bufferSizeByConnection = 4096, int maxNumberOfConnections = 8)
+        {
+            return new NetClientProvider(netProviderType, bufferSizeByConnection, maxNumberOfConnections);
         }
 
         #endregion
