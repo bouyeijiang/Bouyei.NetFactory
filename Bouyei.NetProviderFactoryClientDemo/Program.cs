@@ -29,7 +29,7 @@ namespace Bouyei.NetProviderFactoryClientDemo
             //同步连接
             //if (clientSocket.ConnectSync(port, "127.0.0.1"))
             //{
-            //    clientSocket.SendSync(Encoding.UTF8.GetBytes("I'm client" + DateTime.Now), (recCnt,buffer) =>
+            //    clientSocket.SendSync(Encoding.UTF8.GetBytes("I'm client" + DateTime.Now), (recCnt, buffer) =>
             //    {
             //        Console.WriteLine("client:from server[" + Encoding.UTF8.GetString(buffer, 0, recCnt));
             //    });
