@@ -344,7 +344,6 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             catch (Exception ex)
             {
-
                 throw ex;
             }
 
@@ -360,6 +359,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessReceive(SocketAsyncEventArgs e)
         {
+            SocketToken sToken = null;
             try
             {
                 if (stoped)
@@ -370,9 +370,9 @@ namespace Bouyei.NetProviderFactory.Tcp
                     return;
                 }
 
-                SocketToken sToken = e.UserToken as SocketToken;
+                sToken = e.UserToken as SocketToken;
 
-                if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
+                if (e.BytesTransferred > 0)
                 {
                     ReceiveOffsetCallback?.Invoke(sToken, e.Buffer, e.Offset, e.BytesTransferred);
 
@@ -390,12 +390,6 @@ namespace Bouyei.NetProviderFactory.Tcp
                             ReceivedCallback(sToken, realBytes);
                         }
                     }
-
-                    //继续投递下一个接受请求
-                    if (!sToken.TokenSocket.ReceiveAsync(e))
-                    {
-                        this.ProcessReceive(e);
-                    }
                 }
                 else
                 {
@@ -409,6 +403,17 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 throw ex;
             }
+            finally
+            {
+                if (e.SocketError == SocketError.Success)
+                {
+                    //继续投递下一个接受请求
+                    if (!sToken.TokenSocket.ReceiveAsync(e))
+                    {
+                        this.ProcessReceive(e);
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -419,10 +424,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                //用完的对象放回对象池
-                sendPool.Push(e);
-
-                if (e.SocketError == SocketError.Success)
+                 if (e.SocketError == SocketError.Success)
                 {
                     //事件回调传递
                     SentCallback?.Invoke(e.UserToken as SocketToken, e.BytesTransferred);
@@ -435,6 +437,11 @@ namespace Bouyei.NetProviderFactory.Tcp
             catch (Exception ex)
             {
                 throw ex;
+            }
+            finally
+            {
+                //用完的对象放回对象池
+                sendPool.Push(e);
             }
         }
 
@@ -451,14 +458,16 @@ namespace Bouyei.NetProviderFactory.Tcp
                 //递减信号量
                 acceptSemphoreClients.Release();
 
-                //将断开的对象重新放回复用队列
-                acceptPool.Push(e);
-
                 DisconnectedCallback?.Invoke(e.UserToken as SocketToken);
             }
             catch (Exception ex)
             {
                 throw ex;
+            }
+            finally
+            {
+                //将断开的对象重新放回复用队列
+                acceptPool.Push(e);
             }
         }
 

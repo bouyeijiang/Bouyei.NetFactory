@@ -176,6 +176,20 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
+        public bool ConnectSync(int port,string ip)
+        {
+            if (NetProviderType == ProviderType.Tcp)
+            {
+               return tcpClientProvider.ConnectSync(port, ip);
+            }
+            else if (NetProviderType == ProviderType.Udp)
+            {
+                udpClientProvider.Initialize(bufferSizeByConnection, port);
+                return true;
+            }
+            return false;
+        }
+
         public void Send(byte[] buffer, IPEndPoint udpEp)
         {
             if (NetProviderType == ProviderType.Tcp)
@@ -200,15 +214,27 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public void Send(byte[] buffer, Action<byte[]> recAct = null)
+        public void SendSync(byte[] buffer, Action<int,byte[]> recAct = null,int recBufferSize=4096)
         {
             if (NetProviderType == ProviderType.Tcp)
             {
-                tcpClientProvider.Send(buffer, recAct);
+                tcpClientProvider.SendSync(buffer, recAct,recBufferSize);
             }
             else if (NetProviderType == ProviderType.Udp)
             {
-                udpClientProvider.Send(buffer, recAct);
+                udpClientProvider.SendSync(buffer, recAct, recBufferSize);
+            }
+        }
+
+        public void ReceiveSync(Action<int, byte[]> recAct = null, int recBufferSize = 4096)
+        {
+            if (NetProviderType == ProviderType.Tcp)
+            {
+                tcpClientProvider.ReceiveSync( recAct, recBufferSize);
+            }
+            else if (NetProviderType == ProviderType.Udp)
+            {
+                udpClientProvider.ReceiveSync(recAct, recBufferSize);
             }
         }
         #endregion

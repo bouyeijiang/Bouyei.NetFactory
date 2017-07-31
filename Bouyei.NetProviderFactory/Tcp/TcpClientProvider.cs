@@ -107,7 +107,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// </summary>
         /// <param name="port"></param>
         /// <param name="ip"></param>
-        public void Connect(int port, string ip = "0.0.0.0")
+        public void Connect(int port, string ip)
         {
             try
             {
@@ -127,13 +127,48 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
                 args.RemoteEndPoint = ips;
-                args.UserToken = clientSocket;
+                args.UserToken = new SocketToken() { TokenSocket = args.AcceptSocket };
+
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
                 if (!clientSocket.ConnectAsync(args))
                 {
                     ProcessConnectHandler(args);
                 }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// 同步连接
+        /// </summary>
+        /// <param name="port"></param>
+        /// <param name="ip"></param>
+        /// <returns></returns>
+        public bool ConnectSync(int port, string ip)
+        {
+            try
+            {
+                if (isConnected ||
+                    clientSocket != null)
+                {
+                    clientSocket.Disconnect(true);
+                    clientSocket.Close();
+                    clientSocket.Dispose();
+                }
+
+                isConnected = false;
+
+                IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
+
+                clientSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+               
+                clientSocket.Connect(ips);
+                isConnected = true;
+                return true;
             }
             catch (Exception ex)
             {
@@ -175,35 +210,55 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
         }
 
+        /// <summary>
+        /// 发送文件
+        /// </summary>
+        /// <param name="filename"></param>
         public void SendFile(string filename)
         {
             clientSocket.SendFile(filename);
         }
 
-        public int Send(byte[] buffer, Action<byte[]> recAct = null)
+        /// <summary>
+        /// 同步发送数据
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="recBufferSize"></param>
+        /// <param name="recAct"></param>
+        /// <returns></returns>
+        public int SendSync(byte[] buffer, Action<int, byte[]> recAct = null, int recBufferSize = 4096)
         {
             int sent = clientSocket.Send(buffer);
             if (recAct != null && sent > 0)
             {
-                byte[] recBuffer = new byte[1024];
-                List<byte> array = new List<byte>(recBuffer.Length);
-                int cnt = 0;
+                byte[] recBuffer = new byte[recBufferSize];
 
-                do
-                {
-                    cnt = clientSocket.Receive(recBuffer, recBuffer.Length, 0);
-                    if (cnt > 0)
-                    {
-                        for (int i = 0; i < cnt; ++i)
-                        {
-                            array.Add(recBuffer[i]);
-                        }
-                    }
+                int cnt = clientSocket.Receive(recBuffer, recBuffer.Length, 0);
 
-                } while (cnt > 0);
-                recAct(array.ToArray());
+                recAct(cnt, recBuffer);
             }
             return sent;
+        }
+
+        /// <summary>
+        /// 同步接收数据
+        /// </summary>
+        /// <param name="recBufferSize"></param>
+        /// <param name="recAct"></param>
+        public void ReceiveSync(Action<int, byte[]> recAct = null,int recBufferSize = 4096)
+        {
+            int cnt = 0;
+            byte[] buffer = new byte[recBufferSize];
+            do
+            {
+                if (clientSocket.Connected == false) break;
+
+                cnt = clientSocket.Receive(buffer, buffer.Length, 0);
+                if (cnt > 0)
+                {
+                    recAct?.Invoke(cnt, buffer);
+                }
+            } while (cnt > 0);
         }
 
         /// <summary>
@@ -315,8 +370,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                             RecievedCallback(e.UserToken as SocketToken, realBytes);
                         }
                     }
-
-
+                          
                     if (!isConnected) return;
 
                     if (!clientSocket.ReceiveAsync(e))
