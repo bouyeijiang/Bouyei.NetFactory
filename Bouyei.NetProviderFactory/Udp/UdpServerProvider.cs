@@ -136,7 +136,8 @@ namespace Bouyei.NetProviderFactory.Udp
                 TokenSocket = e.ConnectSocket
             };
 
-            ReceiveOffsetHanlder?.Invoke(sToken, e.Buffer, e.Offset, e.BytesTransferred);
+            if (ReceiveOffsetHanlder != null)
+                ReceiveOffsetHanlder(sToken, e.Buffer, e.Offset, e.BytesTransferred);
 
             if (ReceiveCallbackHandler != null)
             {

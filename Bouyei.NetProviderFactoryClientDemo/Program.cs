@@ -34,7 +34,14 @@ namespace Bouyei.NetProviderFactoryClientDemo
             //        Console.WriteLine("client:from server[" + Encoding.UTF8.GetString(buffer, 0, recCnt));
             //    });
             //}
-            Console.ReadKey();
+            again:
+            Console.WriteLine("输入内容发送(exist退出):");
+           string key= Console.ReadLine();
+            if (key != "exist")
+            {
+                clientSocket.Send(Encoding.UTF8.GetBytes("client:" + key + DateTime.Now));
+                goto again;
+            }
         }
     }
 }

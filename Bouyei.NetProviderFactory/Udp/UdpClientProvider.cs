@@ -95,10 +95,12 @@ namespace Bouyei.NetProviderFactory.Udp
             {
                 SocketAsyncEventArgs sendArgs = new SocketAsyncEventArgs();
                 sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                sendArgs.UserToken = new SocketToken(i + maxNumberOfConnections);
                 sendPool.Push(sendArgs);
 
                 SocketAsyncEventArgs recArgs = new SocketAsyncEventArgs();
                 recArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                recArgs.UserToken = new SocketToken(i);
                 receivePool.Push(sendArgs);
             }
         }
@@ -112,6 +114,8 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             SocketAsyncEventArgs sendArgs = sendPool.Pop();
             sendArgs.RemoteEndPoint = remoteEP;
+            ((SocketToken)sendArgs.UserToken).TokenSocket = sendSocket;
+
             sendArgs.SetBuffer(data, 0, data.Length);
             if (!sendSocket.SendToAsync(sendArgs))
             {
@@ -123,6 +127,8 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             SocketAsyncEventArgs sendArgs = sendPool.Pop();
             sendArgs.SetBuffer(buffer, 0, buffer.Length);
+            ((SocketToken)sendArgs.UserToken).TokenSocket = sendSocket;
+
             if (!sendSocket.SendToAsync(sendArgs))
             {
                 ProcessSent(sendArgs);
@@ -150,7 +156,7 @@ namespace Bouyei.NetProviderFactory.Udp
             return sent;
         }
 
-        public void ReceiveSync(Action<int, byte[]> recAct = null, int recBufferSize = 4096)
+        public void ReceiveSync(Action<int, byte[]> recAct, int recBufferSize = 4096)
         {
             int cnt = 0;
             byte[] buffer = new byte[recBufferSize];
@@ -161,7 +167,7 @@ namespace Bouyei.NetProviderFactory.Udp
                 cnt = sendSocket.Receive(buffer, buffer.Length, 0);
                 if (cnt > 0)
                 {
-                    recAct?.Invoke(cnt, buffer);
+                    recAct(cnt, buffer);
                 }
             } while (cnt > 0);
         }
@@ -178,6 +184,8 @@ namespace Bouyei.NetProviderFactory.Udp
 
             SocketAsyncEventArgs sendArgs = sendPool.Pop();
             sendArgs.RemoteEndPoint = serverEP;
+            ((SocketToken)sendArgs.UserToken).TokenSocket = sendSocket;
+
             sendArgs.SetBuffer(data, 0, data.Length);
             if (!sendSocket.SendToAsync(sendArgs))
             {
@@ -193,6 +201,8 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             SocketAsyncEventArgs recArgs = receivePool.Pop();
             recArgs.RemoteEndPoint = remoteEP;
+            ((SocketToken)recArgs.UserToken).TokenSocket = recSocket;
+          
             if (!recSocket.ReceiveFromAsync(recArgs))
             {
                 ProcessReceive(recArgs);
@@ -203,11 +213,11 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             try
             {
+                receivePool.Push(e);
+
                 //缓冲区偏移量返回
-                ReceiveOffsetHandler?.Invoke(new SocketToken()
-                {
-                    TokenSocket = e.ConnectSocket
-                }, e.Buffer, e.Offset, e.BytesTransferred);
+                if (ReceiveOffsetHandler != null)
+                    ReceiveOffsetHandler(e.UserToken as SocketToken, e.Buffer, e.Offset, e.BytesTransferred);
 
                 //截取后返回
                 if (ReceiveCallbackHandler != null)
@@ -216,20 +226,14 @@ namespace Bouyei.NetProviderFactory.Udp
                     {
                         if (e.Offset == 0 && e.BytesTransferred == e.Buffer.Length)
                         {
-                            ReceiveCallbackHandler(new SocketToken()
-                            {
-                                TokenSocket = e.ConnectSocket
-                            }, e.Buffer);
+                            ReceiveCallbackHandler(e.UserToken as SocketToken, e.Buffer);
                         }
                         else
                         {
                             byte[] realbytes = new byte[e.BytesTransferred];
                             Buffer.BlockCopy(e.Buffer, e.Offset, realbytes, 0, e.BytesTransferred);
 
-                            ReceiveCallbackHandler(new SocketToken()
-                            {
-                                TokenSocket = e.ConnectSocket
-                            }, realbytes);
+                            ReceiveCallbackHandler(e.UserToken as SocketToken, realbytes);
                         }
                     }
                 }
@@ -239,8 +243,6 @@ namespace Bouyei.NetProviderFactory.Udp
             }
             finally
             {
-                receivePool.Push(e);
-
                 //继续下一个接收
                 StartReceive((IPEndPoint)e.RemoteEndPoint);
             }
@@ -250,21 +252,16 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             try
             {
+                sendPool.Push(e);
+                
                 if (SentCallbackHandler != null)
                 {
-                    SentCallbackHandler(new SocketToken()
-                    {
-                        TokenSocket = e.ConnectSocket
-                    }, e.BytesTransferred);
+                    SentCallbackHandler(e.UserToken as SocketToken, e.BytesTransferred);
                 }
             }
             catch (Exception ex)
             {
                 throw ex;
-            }
-            finally
-            {
-                sendPool.Push(e);
             }
         }
 

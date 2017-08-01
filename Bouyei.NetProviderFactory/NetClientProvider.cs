@@ -21,6 +21,17 @@ namespace Bouyei.NetProviderFactory
         #endregion
 
         #region property
+
+        public bool IsConnected
+        {
+            get
+            {
+                if (ProviderType.Tcp == NetProviderType)
+                    return tcpClientProvider.IsConnected;
+                else return false;
+            }
+        }
+
         private OnReceiveHandler _receiveHanlder = null;
         public OnReceiveHandler ReceiveHanlder
         {
@@ -176,20 +187,6 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public bool ConnectSync(int port,string ip)
-        {
-            if (NetProviderType == ProviderType.Tcp)
-            {
-               return tcpClientProvider.ConnectSync(port, ip);
-            }
-            else if (NetProviderType == ProviderType.Udp)
-            {
-                udpClientProvider.Initialize(bufferSizeByConnection, port);
-                return true;
-            }
-            return false;
-        }
-
         public void Send(byte[] buffer, IPEndPoint udpEp)
         {
             if (NetProviderType == ProviderType.Tcp)
@@ -214,6 +211,20 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
+        public bool ConnectSync(int port, string ip)
+        {
+            if (NetProviderType == ProviderType.Tcp)
+            {
+                return tcpClientProvider.ConnectSync(port, ip);
+            }
+            else if (NetProviderType == ProviderType.Udp)
+            {
+                udpClientProvider.Initialize(bufferSizeByConnection, port);
+                return true;
+            }
+            return false;
+        }
+
         public void SendSync(byte[] buffer, Action<int,byte[]> recAct = null,int recBufferSize=4096)
         {
             if (NetProviderType == ProviderType.Tcp)
@@ -226,7 +237,7 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public void ReceiveSync(Action<int, byte[]> recAct = null, int recBufferSize = 4096)
+        public void ReceiveSync(Action<int, byte[]> recAct, int recBufferSize = 4096)
         {
             if (NetProviderType == ProviderType.Tcp)
             {

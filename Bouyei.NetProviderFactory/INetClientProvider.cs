@@ -15,6 +15,7 @@ namespace Bouyei.NetProviderFactory
 {
     public interface INetClientProvider
     {
+        bool IsConnected { get; }
         OnReceiveHandler ReceiveHanlder { get; set; }
 
         OnSentHandler SentHanlder { get; set; }
@@ -28,5 +29,11 @@ namespace Bouyei.NetProviderFactory
         void Connect(int port, string ip);
 
         void Send(byte[] buffer);
+
+        bool ConnectSync(int port, string ip);
+
+        void SendSync(byte[] buffer, Action<int, byte[]> recAct = null, int recBufferSize = 4096);
+
+        void ReceiveSync(Action<int, byte[]> recAct, int recBufferSize = 4096);
     }
 }

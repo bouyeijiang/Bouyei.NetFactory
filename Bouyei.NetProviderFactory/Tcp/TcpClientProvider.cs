@@ -197,7 +197,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                     tArgs.SetBuffer(buffer, 0, buffer.Length);
                 }
 
-                tArgs.UserToken = tArgs;
+                ((SocketToken)tArgs.UserToken).TokenSocket = clientSocket;
 
                 if (!clientSocket.SendAsync(tArgs))
                 {
@@ -245,7 +245,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// </summary>
         /// <param name="recBufferSize"></param>
         /// <param name="recAct"></param>
-        public void ReceiveSync(Action<int, byte[]> recAct = null,int recBufferSize = 4096)
+        public void ReceiveSync(Action<int, byte[]> recAct,int recBufferSize = 4096)
         {
             int cnt = 0;
             byte[] buffer = new byte[recBufferSize];
@@ -256,7 +256,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 cnt = clientSocket.Receive(buffer, buffer.Length, 0);
                 if (cnt > 0)
                 {
-                    recAct?.Invoke(cnt, buffer);
+                    recAct(cnt, buffer);
                 }
             } while (cnt > 0);
         }
@@ -332,11 +332,12 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
+                //isConnected = (e.SocketError == SocketError.Success);
+
                 tokenPool.Push(e);
-
-                isConnected = (e.SocketError == SocketError.Success);
-
-                SentCallback?.Invoke(e.UserToken as SocketToken, e.BytesTransferred);
+                
+                if (SentCallback != null)
+                    SentCallback(e.UserToken as SocketToken, e.BytesTransferred);
             }
             catch (Exception ex)
             {
@@ -354,7 +355,8 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                 {
-                    ReceiveOffsetCallback?.Invoke(e.UserToken as SocketToken, e.Buffer, e.Offset, e.BytesTransferred);
+                    if(ReceiveOffsetCallback!=null)
+                    ReceiveOffsetCallback(e.UserToken as SocketToken, e.Buffer, e.Offset, e.BytesTransferred);
 
                     if (RecievedCallback != null)
                     {
@@ -378,12 +380,11 @@ namespace Bouyei.NetProviderFactory.Tcp
                         ProcessReceiveHandler(e);
                     }
                 }
-                else
-                {
-                    isConnected = false;
-
-                    DisconnectedCallback?.Invoke(e.UserToken as SocketToken);
-                }
+                //else
+                //{
+                //    if (DisconnectedCallback != null)
+                //        DisconnectedCallback(e.UserToken as SocketToken);
+                //}
             }
             catch (Exception ex)
             {
@@ -409,8 +410,24 @@ namespace Bouyei.NetProviderFactory.Tcp
                         ProcessReceiveHandler(e);
                     }
                 }
+                if (ConnectedCallback != null)
+                    ConnectedCallback(e.UserToken as SocketToken, isConnected);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
 
-                ConnectedCallback?.Invoke(e.UserToken as SocketToken, isConnected);
+        private void ProcessDisconnectHandler(SocketAsyncEventArgs e)
+        {
+            try
+            {
+                Close(e);
+                isConnected = (e.SocketError == SocketError.Success);
+
+                if (DisconnectedCallback != null)
+                    DisconnectedCallback(e.UserToken as SocketToken);
             }
             catch (Exception ex)
             {
@@ -437,7 +454,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                     ProcessConnectHandler(e);
                     break;
                 case SocketAsyncOperation.Disconnect:
-                    Close(e);
+                    ProcessDisconnectHandler(e);
                     break;
             }
         }

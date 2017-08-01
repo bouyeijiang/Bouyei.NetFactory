@@ -340,7 +340,8 @@ namespace Bouyei.NetProviderFactory.Tcp
                 }
 
                 //将信息传递到自定义的方法
-                AcceptedCallback?.Invoke(tArgs.UserToken as SocketToken);
+                if (AcceptedCallback != null)
+                    AcceptedCallback(tArgs.UserToken as SocketToken);
             }
             catch (Exception ex)
             {
@@ -374,7 +375,8 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 if (e.BytesTransferred > 0)
                 {
-                    ReceiveOffsetCallback?.Invoke(sToken, e.Buffer, e.Offset, e.BytesTransferred);
+                    if (ReceiveOffsetCallback != null)
+                        ReceiveOffsetCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);
 
                     //处理接收到的数据
                     if (ReceivedCallback != null)
@@ -395,8 +397,8 @@ namespace Bouyei.NetProviderFactory.Tcp
                 {
                     //关闭异常对象
                     CloseClientSocket(sToken);
-
-                    DisconnectedCallback?.Invoke(sToken);
+                    if(DisconnectedCallback!=null)
+                    DisconnectedCallback(sToken);
                 }
             }
             catch (Exception ex)
@@ -427,7 +429,8 @@ namespace Bouyei.NetProviderFactory.Tcp
                  if (e.SocketError == SocketError.Success)
                 {
                     //事件回调传递
-                    SentCallback?.Invoke(e.UserToken as SocketToken, e.BytesTransferred);
+                    if (SentCallback != null)
+                        SentCallback(e.UserToken as SocketToken, e.BytesTransferred);
                 }
                 else
                 {
@@ -457,8 +460,8 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 //递减信号量
                 acceptSemphoreClients.Release();
-
-                DisconnectedCallback?.Invoke(e.UserToken as SocketToken);
+                if (DisconnectedCallback != null)
+                    DisconnectedCallback(e.UserToken as SocketToken);
             }
             catch (Exception ex)
             {
