@@ -19,6 +19,7 @@ namespace Bouyei.NetProviderFactory.Udp
         #endregion
 
         #region 属性
+        public int SendBufferPoolNumber { get { return sendPool.Count; } }
 
         /// <summary>
         /// 接收回调处理
@@ -113,6 +114,9 @@ namespace Bouyei.NetProviderFactory.Udp
         public void Send(byte[] data, IPEndPoint remoteEP)
         {
             SocketAsyncEventArgs sendArgs = sendPool.Pop();
+            if (sendArgs == null)
+                throw new Exception("发送缓冲池已用完,等待回收...");
+
             sendArgs.RemoteEndPoint = remoteEP;
             ((SocketToken)sendArgs.UserToken).TokenSocket = sendSocket;
 
@@ -126,6 +130,9 @@ namespace Bouyei.NetProviderFactory.Udp
         public void Send(byte[] buffer)
         {
             SocketAsyncEventArgs sendArgs = sendPool.Pop();
+            if (sendArgs == null)
+                throw new Exception("发送缓冲池已用完,等待回收...");
+
             sendArgs.SetBuffer(buffer, 0, buffer.Length);
             ((SocketToken)sendArgs.UserToken).TokenSocket = sendSocket;
 
@@ -183,6 +190,9 @@ namespace Bouyei.NetProviderFactory.Udp
             var serverEP = new IPEndPoint(IPAddress.Parse(ip), port);
 
             SocketAsyncEventArgs sendArgs = sendPool.Pop();
+            if (sendArgs == null)
+                throw new Exception("发送缓冲池已用完,等待回收...");
+
             sendArgs.RemoteEndPoint = serverEP;
             ((SocketToken)sendArgs.UserToken).TokenSocket = sendSocket;
 

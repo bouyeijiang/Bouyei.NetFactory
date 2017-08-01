@@ -11,7 +11,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         private bool isConnected = false;
         private bool _isDisposed = false;
         private int blockSize = 4096;
-        private int maxBufferNumber = 8;
+        private int maxNumberOfConnections = 8;
         private byte[] receiveBuffer = null;
         private Socket clientSocket = null;
         private SocketTokenManager<SocketAsyncEventArgs> tokenPool = null;
@@ -52,6 +52,8 @@ namespace Bouyei.NetProviderFactory.Tcp
             get { return isConnected; }
         }
 
+        public int SendBufferPoolNumber { get { return tokenPool.Count; } }
+
         #endregion
 
         #region constructor
@@ -91,7 +93,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="maxNumberOfConnections"></param>
         public TcpClientProvider(int blockSize = 4096, int maxNumberOfConnections = 8)
         {
-            this.maxBufferNumber = maxNumberOfConnections;
+            this.maxNumberOfConnections = maxNumberOfConnections;
             this.blockSize = blockSize;
             this.receiveBuffer = new byte[blockSize];
             tokenPool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
@@ -127,7 +129,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
                 args.RemoteEndPoint = ips;
-                args.UserToken = new SocketToken() { TokenSocket = args.AcceptSocket };
+                args.UserToken = new SocketToken() { TokenSocket = clientSocket };
 
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
@@ -187,10 +189,20 @@ namespace Bouyei.NetProviderFactory.Tcp
                 if (isConnected == false ||
                     clientSocket == null ||
                     clientSocket.Connected == false) return;
-
+                
+                int rCnt = 0;
                 SocketAsyncEventArgs tArgs = tokenPool.Pop();
                 if (tArgs == null)
-                    throw new Exception("发送连接池为空");
+                {
+                    if (rCnt >= 3)
+                    {
+                        throw new Exception("已发送多个数据包但未都完成发送,已终止发送...");
+                    }
+
+                    InitializePool(maxNumberOfConnections);
+                    tArgs = tokenPool.Pop();
+                    rCnt += 1;
+                }
 
                 if (!sendBufferPool.WriteBuffer(buffer, tArgs))
                 {
@@ -310,11 +322,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// 初始化发送对象池
         /// </summary>
         /// <param name="maxNumber"></param>
-        private void InitializePool(int maxNumber)
+        private void InitializePool(int maxNumberOfConnections)
         {
             tokenPool.Clear();
 
-            for (int i = 0; i < maxNumber; ++i)
+            for (int i = 0; i < maxNumberOfConnections; ++i)
             {
                 SocketAsyncEventArgs tArgs = new SocketAsyncEventArgs();
                 tArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);

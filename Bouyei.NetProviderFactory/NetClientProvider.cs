@@ -32,6 +32,21 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
+        /// <summary>
+        /// 发送缓冲区个数
+        /// </summary>
+        public int SendBufferNumber
+        {
+            get
+            {
+                if (ProviderType.Tcp == NetProviderType)
+                    return tcpClientProvider.SendBufferPoolNumber;
+                else if (ProviderType.Udp == NetProviderType)
+                    return udpClientProvider.SendBufferPoolNumber;
+                else return 0;
+            }
+        }
+
         private OnReceiveHandler _receiveHanlder = null;
         public OnReceiveHandler ReceiveHanlder
         {
