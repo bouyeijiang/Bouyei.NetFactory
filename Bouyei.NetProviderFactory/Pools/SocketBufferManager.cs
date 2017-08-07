@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace Bouyei.NetProviderFactory
 {
@@ -9,6 +10,7 @@ namespace Bouyei.NetProviderFactory
         int totalSize;
         int curIndex;
         int blockSize;
+        int used = 0;
         byte[] buffer;
         Stack<int> freeBufferIndexPool;
 
@@ -38,42 +40,66 @@ namespace Bouyei.NetProviderFactory
         /// <returns></returns>
         public bool SetBuffer(SocketAsyncEventArgs agrs)
         {
-            if (freeBufferIndexPool.Count > 0)
+            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
             {
-                agrs.SetBuffer(this.buffer,
-                    this.freeBufferIndexPool.Pop(),
-                    blockSize);
+                Thread.Sleep(1);
             }
-            else
+            try
             {
-                if ((totalSize - blockSize) < curIndex) return false;
+                if (freeBufferIndexPool.Count > 0)
+                {
+                    agrs.SetBuffer(this.buffer,
+                        this.freeBufferIndexPool.Pop(),
+                        blockSize);
+                }
+                else
+                {
+                    if ((totalSize - blockSize) < curIndex) return false;
 
-                agrs.SetBuffer(this.buffer, this.curIndex, this.blockSize);
+                    agrs.SetBuffer(this.buffer, this.curIndex, this.blockSize);
 
-                this.curIndex += this.blockSize;
+                    this.curIndex += this.blockSize;
+                }
+                return true;
             }
-            return true;
+            finally
+            {
+                Interlocked.Exchange(ref used, 0);
+            }
         }
 
         /// <summary>
         /// 写入缓冲区
         /// </summary>
-        /// <param name="data"></param>
         /// <param name="agrs"></param>
+        /// <param name="data"></param>
+        /// <param name="offset"></param>
+        /// <param name="cnt"></param>
         /// <returns></returns>
-        public bool WriteBuffer(byte[] data,SocketAsyncEventArgs agrs)
+        public bool WriteBuffer(SocketAsyncEventArgs agrs, byte[] data,int offset,int cnt)
         {
-            //超出缓冲区则不写入
-            if(agrs.Offset+data.Length>this.buffer.Length)
+            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
             {
-                return false;
+                Thread.Sleep(1);
             }
-            
-            Buffer.BlockCopy(data, 0, this.buffer, agrs.Offset, data.Length);
+            try
+            {
+                //超出缓冲区则不写入
+                if (agrs.Offset + data.Length > this.buffer.Length)
+                {
+                    return false;
+                }
 
-            agrs.SetBuffer(this.buffer, agrs.Offset, data.Length);
+                Buffer.BlockCopy(data, offset, this.buffer, agrs.Offset, cnt);
 
-            return true;
+                agrs.SetBuffer(this.buffer, agrs.Offset, data.Length);
+
+                return true;
+            }
+            finally
+            {
+                Interlocked.Exchange(ref used, 0);
+            }
         }
 
         /// <summary>
@@ -82,8 +108,19 @@ namespace Bouyei.NetProviderFactory
         /// <param name="args"></param>
         public void FreeBuffer(SocketAsyncEventArgs args)
         {
-            this.freeBufferIndexPool.Push(args.Offset);
-            args.SetBuffer(null, 0, 0);
+            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
+            {
+                Thread.Sleep(1);
+            }
+            try
+            {
+                this.freeBufferIndexPool.Push(args.Offset);
+                args.SetBuffer(null, 0, 0);
+            }
+            finally
+            {
+                Interlocked.Exchange(ref used, 0);
+            }
         }
     }
 }

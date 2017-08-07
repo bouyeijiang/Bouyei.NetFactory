@@ -78,7 +78,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         /// <param name="data"></param>
         /// <param name="remoteEP"></param>
-        public void Send(byte[] data, IPEndPoint remoteEP)
+        public void Send(byte[] data,int offset,int size ,IPEndPoint remoteEP)
         {
             SocketAsyncEventArgs socketArgs = null;
             try
@@ -92,7 +92,7 @@ namespace Bouyei.NetProviderFactory.Udp
                 }
                 socketArgs.RemoteEndPoint = remoteEP;
                 
-                if(!sentBufferPool.WriteBuffer(data, socketArgs))
+                if(!sentBufferPool.WriteBuffer(socketArgs,data,offset,size))
                 {
                     throw new Exception("设置发送缓冲区失败");
                 }

@@ -111,7 +111,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         /// <param name="data"></param>
         /// <param name="remoteEP"></param>
-        public void Send(byte[] data, IPEndPoint remoteEP)
+        public void Send(byte[] data,int offset,int size, IPEndPoint remoteEP)
         {
             SocketAsyncEventArgs sendArgs = sendPool.Pop();
             if (sendArgs == null)
@@ -120,20 +120,20 @@ namespace Bouyei.NetProviderFactory.Udp
             sendArgs.RemoteEndPoint = remoteEP;
             ((SocketToken)sendArgs.UserToken).TokenSocket = sendSocket;
 
-            sendArgs.SetBuffer(data, 0, data.Length);
+            sendArgs.SetBuffer(data, offset, size);
             if (!sendSocket.SendToAsync(sendArgs))
             {
                 ProcessSent(sendArgs);
             }
         }
 
-        public void Send(byte[] buffer)
+        public void Send(byte[] buffer,int offset,int size)
         {
             SocketAsyncEventArgs sendArgs = sendPool.Pop();
             if (sendArgs == null)
                 throw new Exception("发送缓冲池已用完,等待回收...");
 
-            sendArgs.SetBuffer(buffer, 0, buffer.Length);
+            sendArgs.SetBuffer(buffer, offset, size);
             ((SocketToken)sendArgs.UserToken).TokenSocket = sendSocket;
 
             if (!sendSocket.SendToAsync(sendArgs))

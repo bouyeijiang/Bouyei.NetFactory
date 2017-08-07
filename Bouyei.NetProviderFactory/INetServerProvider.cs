@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Bouyei.NetProviderFactory
 {
-   public interface INetServerProvider
+   public interface INetServerProvider:IDisposable
     {
         OnReceiveHandler ReceiveHanlder { get; set; }
 
@@ -29,6 +29,9 @@ namespace Bouyei.NetProviderFactory
 
         void Send(SocketToken sToken, byte[] buffer);
 
+        void Send(SocketToken sToken, byte[] buffer, int offset, int size);
+
         void Stop();
+
     }
 }

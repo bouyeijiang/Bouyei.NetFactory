@@ -15,7 +15,7 @@ namespace Bouyei.NetProviderFactory
 {
     using Tcp;
     using Udp;
-    public class NetServerProvider : INetServerProvider, IDisposable
+    public class NetServerProvider : INetServerProvider
     {
         #region variable
         private TcpServerProvider tcpServerProvider = null;
@@ -138,8 +138,10 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public NetServerProvider(ProviderType netProviderType = ProviderType.Tcp,
-            int bufferSizeByConnection = 4096, int maxNumberOfConnections = 1024)
+        public NetServerProvider(
+            int bufferSizeByConnection = 4096,
+            int maxNumberOfConnections = 1024,
+            ProviderType netProviderType = ProviderType.Tcp)
         {
             this.NetProviderType = netProviderType;
             this.bufferSizeByConnection = bufferSizeByConnection;
@@ -155,10 +157,12 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public static NetServerProvider CreateNetServerProvider(ProviderType netProviderType = ProviderType.Tcp,
-            int bufferSizeByConnection = 4096, int maxNumberOfConnections = 1024)
+        public static NetServerProvider CreateNetServerProvider(
+            int bufferSizeByConnection = 4096,
+            int maxNumberOfConnections = 1024,
+            ProviderType netProviderType = ProviderType.Tcp)
         {
-            return new NetServerProvider(netProviderType, bufferSizeByConnection, maxNumberOfConnections);
+            return new NetServerProvider(bufferSizeByConnection, maxNumberOfConnections, netProviderType);
         }
 
         #endregion
@@ -194,12 +198,27 @@ namespace Bouyei.NetProviderFactory
         {
             if (NetProviderType == ProviderType.Tcp)
             {
-                tcpServerProvider.Send(sToken, buffer);
+                tcpServerProvider.Send(sToken, buffer, 0, buffer.Length);
             }
             else if (NetProviderType == ProviderType.Udp)
             {
-                udpServerProvider.Send((System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint,
-                    buffer);
+                udpServerProvider.Send(
+                    (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint,
+                    buffer, 0, buffer.Length);
+            }
+        }
+
+        public void Send(SocketToken sToken, byte[] buffer,int offset,int size)
+        {
+            if (NetProviderType == ProviderType.Tcp)
+            {
+                tcpServerProvider.Send(sToken, buffer, offset, size);
+            }
+            else if (NetProviderType == ProviderType.Udp)
+            {
+                udpServerProvider.Send(
+                    (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint,
+                    buffer, offset, size);
             }
         }
         #endregion

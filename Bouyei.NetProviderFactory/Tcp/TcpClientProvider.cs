@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace Bouyei.NetProviderFactory.Tcp
 {
@@ -96,8 +97,6 @@ namespace Bouyei.NetProviderFactory.Tcp
             this.maxNumberOfConnections = maxNumberOfConnections;
             this.blockSize = blockSize;
             this.receiveBuffer = new byte[blockSize];
-            tokenPool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
-            sendBufferPool = new SocketBufferManager(maxNumberOfConnections, blockSize);
             InitializePool(maxNumberOfConnections);
         }
 
@@ -152,29 +151,34 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <returns></returns>
         public bool ConnectSync(int port, string ip)
         {
+
+            if (isConnected ||
+                clientSocket != null)
+            {
+                clientSocket.Disconnect(true);
+                clientSocket.Close();
+                clientSocket.Dispose();
+            }
+
+            isConnected = false;
+            int retry = 3;
+
+            IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
+
+            clientSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            again:
             try
             {
-                if (isConnected ||
-                    clientSocket != null)
-                {
-                    clientSocket.Disconnect(true);
-                    clientSocket.Close();
-                    clientSocket.Dispose();
-                }
-
-                isConnected = false;
-
-                IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
-
-                clientSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-               
                 clientSocket.Connect(ips);
                 isConnected = true;
                 return true;
             }
             catch (Exception ex)
             {
-                throw ex;
+                if (retry >= 0) throw ex;
+               Thread.Sleep(500);
+                retry -= 1;
+                goto again;
             }
         }
 
@@ -184,32 +188,40 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="buffer"></param>
         public void Send(byte[] buffer)
         {
+            Send(buffer, 0, buffer.Length);
+        }
+
+        /// <summary>
+        /// 根据偏移发送缓冲区数据
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        public void Send(byte[] buffer, int offset, int size)
+        {
             try
             {
                 if (isConnected == false ||
                     clientSocket == null ||
                     clientSocket.Connected == false) return;
-                
-                int rCnt = 0;
+
+                int retry = 3;
+                again:
                 SocketAsyncEventArgs tArgs = tokenPool.Pop();
                 if (tArgs == null)
                 {
-                    if (rCnt >= 3)
-                    {
-                        throw new Exception("已发送多个数据包但未都完成发送,已终止发送...");
-                    }
-
-                    InitializePool(maxNumberOfConnections);
-                    tArgs = tokenPool.Pop();
-                    rCnt += 1;
+                    if (retry <= 0) throw new Exception("已发送多个数据包但未都完成发送,已终止发送...");
+                    Thread.Sleep(500);
+                    retry -= 1;
+                    goto again;
                 }
 
-                if (!sendBufferPool.WriteBuffer(buffer, tArgs))
+                if (!sendBufferPool.WriteBuffer(tArgs, buffer, 0, buffer.Length))
                 {
                     tArgs.SetBuffer(buffer, 0, buffer.Length);
                 }
 
-                ((SocketToken)tArgs.UserToken).TokenSocket = clientSocket;
+                 ((SocketToken)tArgs.UserToken).TokenSocket = clientSocket;
 
                 if (!clientSocket.SendAsync(tArgs))
                 {
@@ -303,6 +315,15 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         #region private method
 
+        private void CreateSocketAsyncArgs()
+        {
+            SocketAsyncEventArgs tArgs = new SocketAsyncEventArgs();
+            tArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+            tArgs.UserToken = new SocketToken(0);
+            sendBufferPool.SetBuffer(tArgs);
+            tokenPool.Push(tArgs);
+        }
+
         /// <summary>
         /// 关闭连接对象
         /// </summary>
@@ -324,7 +345,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="maxNumber"></param>
         private void InitializePool(int maxNumberOfConnections)
         {
-            tokenPool.Clear();
+            if(tokenPool!=null) tokenPool.Clear();
+            if (sendBufferPool != null) sendBufferPool.Clear();
+
+            tokenPool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
+            sendBufferPool = new SocketBufferManager(maxNumberOfConnections, blockSize);
 
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
@@ -431,6 +456,10 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
         }
 
+        /// <summary>
+        /// 处理断开连接事件
+        /// </summary>
+        /// <param name="e"></param>
         private void ProcessDisconnectHandler(SocketAsyncEventArgs e)
         {
             try

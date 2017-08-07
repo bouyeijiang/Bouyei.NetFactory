@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace Bouyei.NetProviderFactory
 {
-    public interface INetClientProvider
+    public interface INetClientProvider:IDisposable
     {
         bool IsConnected { get; }
         OnReceiveHandler ReceiveHanlder { get; set; }
@@ -23,12 +23,14 @@ namespace Bouyei.NetProviderFactory
         OnReceiveOffsetHandler ReceiveOffsetHanlder { get; set; }
 
         OnDisconnectedHandler DisconnectedHanlder { get; set; }
-         
+
         void Disconnect();
 
         void Connect(int port, string ip);
 
         void Send(byte[] buffer);
+
+        void Send(byte[] buffer, int offset, int size);
 
         bool ConnectSync(int port, string ip);
 

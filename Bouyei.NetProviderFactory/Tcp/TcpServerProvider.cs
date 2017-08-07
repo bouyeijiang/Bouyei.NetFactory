@@ -105,11 +105,12 @@ namespace Bouyei.NetProviderFactory.Tcp
 
             acceptSemphoreClients = new Semaphore(maxConnections, maxConnections);
 
-            acceptPool = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
-            sendPool = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
-
             recvBuffer = new SocketBufferManager(maxConnections, blockSize);
+            acceptPool = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
 
+            //maxConnections = maxConnections >= 65536 ? (maxConnections >> 1) : maxConnections;
+
+            sendPool = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
             sendBuffer = new SocketBufferManager(maxConnections, blockSize);
         }
 
@@ -202,20 +203,25 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <summary>
         /// 异步发送数据
         /// </summary>
-        public void Send(SocketToken sToken, byte[] buffer)
+        public void Send(SocketToken sToken, byte[] buffer,int offset,int size)
         {
             try
             {
                 //从连接池中取出一个发送的对象
+                int retry = 3;
+                again:
                 SocketAsyncEventArgs tArgs = sendPool.Pop();
-                //确保发送连接池不为空
+                //确保发送连接池不为空,否则尝试3次是否有可用发送缓冲对象
                 if (tArgs == null)
                 {
-                    throw new Exception("无可用的发送池");
+                    if (retry <= 0) throw new Exception("无可用的发送池");
+                    Thread.Sleep(500);
+                    retry -= 1;
+                    goto again;
                 }
 
                 tArgs.UserToken = sToken;
-                if (!sendBuffer.WriteBuffer(buffer, tArgs))
+                if (!sendBuffer.WriteBuffer(tArgs, buffer,offset,size))
                 {
                     tArgs.SetBuffer(buffer, 0, buffer.Length);
                 }
@@ -231,6 +237,12 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
         }
 
+        /// <summary>
+        /// 同步发送数据
+        /// </summary>
+        /// <param name="sToken"></param>
+        /// <param name="buffer"></param>
+        /// <returns></returns>
         public int SendSync(SocketToken sToken, byte[] buffer)
         {
             return sToken.TokenSocket.Send(buffer);

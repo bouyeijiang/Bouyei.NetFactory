@@ -10,7 +10,7 @@ namespace Bouyei.NetProviderFactory
     using Tcp;
     using Udp;
 
-    public class NetClientProvider : INetClientProvider, IDisposable
+    public class NetClientProvider : INetClientProvider
     {
         #region variable
         private bool _isDisposed = false;
@@ -156,8 +156,10 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public NetClientProvider(ProviderType netProviderType = ProviderType.Tcp,
-             int bufferSizeByConnection = 4096, int maxNumberOfConnections = 8)
+        public NetClientProvider(
+            int bufferSizeByConnection = 4096, 
+            int maxNumberOfConnections = 8,
+             ProviderType netProviderType = ProviderType.Tcp)
         {
             NetProviderType = netProviderType;
             this.bufferSizeByConnection = bufferSizeByConnection;
@@ -173,10 +175,12 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public static NetClientProvider CreateNetClientProvider(ProviderType netProviderType = ProviderType.Tcp,
-             int bufferSizeByConnection = 4096, int maxNumberOfConnections = 8)
+        public static NetClientProvider CreateNetClientProvider(
+             int bufferSizeByConnection = 4096, 
+             int maxNumberOfConnections = 8,
+             ProviderType netProviderType = ProviderType.Tcp)
         {
-            return new NetClientProvider(netProviderType, bufferSizeByConnection, maxNumberOfConnections);
+            return new NetClientProvider(bufferSizeByConnection, maxNumberOfConnections, netProviderType);
         }
 
         #endregion
@@ -210,7 +214,19 @@ namespace Bouyei.NetProviderFactory
             }
             else if (NetProviderType == ProviderType.Udp)
             {
-                udpClientProvider.Send(buffer, udpEp);
+                udpClientProvider.Send(buffer,0,buffer.Length, udpEp);
+            }
+        }
+
+        public void Send(byte[] buffer, int offset, int size, IPEndPoint udpEp)
+        {
+            if (NetProviderType == ProviderType.Tcp)
+            {
+                tcpClientProvider.Send(buffer,offset,size);
+            }
+            else if (NetProviderType == ProviderType.Udp)
+            {
+                udpClientProvider.Send(buffer, offset, size, udpEp);
             }
         }
 
@@ -222,7 +238,19 @@ namespace Bouyei.NetProviderFactory
             }
             else if (NetProviderType == ProviderType.Udp)
             {
-                udpClientProvider.Send(buffer);
+                udpClientProvider.Send(buffer,0,buffer.Length);
+            }
+        }
+
+        public void Send(byte[] buffer,int offset,int size)
+        {
+            if (NetProviderType == ProviderType.Tcp)
+            {
+                tcpClientProvider.Send(buffer,offset,size);
+            }
+            else if (NetProviderType == ProviderType.Udp)
+            {
+                udpClientProvider.Send(buffer, offset, size);
             }
         }
 

@@ -100,9 +100,9 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         /// <param name="data"></param>
         /// <param name="remoteEP"></param>
-        public void Send(IPEndPoint remoteEP, byte[] data)
+        public void Send(IPEndPoint remoteEP, byte[] data,int offset,int size)
         {
-            socketSend.Send(data, remoteEP);
+            socketSend.Send(data,offset,size, remoteEP);
         }
 
         /// <summary>
@@ -111,11 +111,11 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="data"></param>
         /// <param name="ip"></param>
         /// <param name="port"></param>
-        public void Send(byte[] data, string ip, int port)
+        public void Send(byte[] data,int offset,int size, string ip, int port)
         {
             IPEndPoint ep = new IPEndPoint(IPAddress.Parse(ip), port);
 
-            socketSend.Send(data, ep);
+            socketSend.Send(data, offset, size, ep);
         }
 
         void sendSocket_SentEventHandler(object sender, SocketAsyncEventArgs e)
