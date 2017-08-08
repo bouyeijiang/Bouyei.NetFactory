@@ -140,7 +140,7 @@ namespace Bouyei.NetProviderFactory
 
         public NetServerProvider(
             int bufferSizeByConnection = 4096,
-            int maxNumberOfConnections = 1024,
+            int maxNumberOfConnections = 64,
             NetProviderType netProviderType = NetProviderType.Tcp)
         {
             this.NetProviderType = netProviderType;
@@ -161,7 +161,7 @@ namespace Bouyei.NetProviderFactory
         {
             this.NetProviderType = netProviderType;
             this.bufferSizeByConnection = 4096;
-            this.maxNumberOfConnections = 1024;
+            this.maxNumberOfConnections = 64;
 
             if (netProviderType == NetProviderType.Tcp)
             {
@@ -175,7 +175,7 @@ namespace Bouyei.NetProviderFactory
 
         public static NetServerProvider CreateNetServerProvider(
             int bufferSizeByConnection = 4096,
-            int maxNumberOfConnections = 1024,
+            int maxNumberOfConnections = 64,
             NetProviderType netProviderType = NetProviderType.Tcp)
         {
             return new NetServerProvider(bufferSizeByConnection, maxNumberOfConnections, netProviderType);
@@ -237,6 +237,36 @@ namespace Bouyei.NetProviderFactory
                     buffer, offset, size, waitingSignal);
             }
         }
+
+        public int SendSync(SocketToken sToken, byte[] buffer)
+        {
+            if (NetProviderType == NetProviderType.Tcp)
+            {
+                tcpServerProvider.SendSync(sToken, buffer, 0, buffer.Length);
+            }
+            else if (NetProviderType == NetProviderType.Udp)
+            {
+             return udpServerProvider.SendSync(
+                    buffer, 0, buffer.Length,
+                    (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint);
+            }
+            return 0;
+        }
+        public int SendSync(SocketToken sToken, byte[] buffer, int offset, int size)
+        {
+            if (NetProviderType == NetProviderType.Tcp)
+            {
+                tcpServerProvider.SendSync(sToken, buffer, offset, size);
+            }
+            else if (NetProviderType == NetProviderType.Udp)
+            {
+                return udpServerProvider.SendSync(
+                       buffer, offset, size,
+                       (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint);
+            }
+            return 0;
+        }
+
         #endregion
     }
 }

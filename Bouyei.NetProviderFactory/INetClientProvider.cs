@@ -25,8 +25,8 @@ namespace Bouyei.NetProviderFactory
         OnDisconnectedHandler DisconnectedHanlder { get; set; }
 
         ChannelProviderType ChannelProviderType { get; }
-        
 
+        NetProviderType NetProviderType { get;}
         void Disconnect();
 
         void Connect(int port, string ip);

@@ -41,7 +41,7 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             while (tokenPool.Count > 0)
             {
-                var item = tokenPool.Pop();
+                var item = tokenPool.Get();
                 if (item != null) item.Dispose();
             }
         }
@@ -70,7 +70,7 @@ namespace Bouyei.NetProviderFactory.Udp
                 SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs();
                 socketArgs.Completed += new EventHandler<SocketAsyncEventArgs>(ClientSocket_Completed);
                 sentBufferPool.SetBuffer(socketArgs);
-                tokenPool.Push(socketArgs);
+                tokenPool.Set(socketArgs);
             }
         }
 
@@ -84,14 +84,14 @@ namespace Bouyei.NetProviderFactory.Udp
             SocketAsyncEventArgs socketArgs = null;
             try
             {
-                socketArgs = tokenPool.Pop();
+                socketArgs = tokenPool.Get();
                 //如果发送对象池已经为空
                 if (socketArgs == null)
                 {
                     while (waitingSignal)
                     {
                         Thread.Sleep(500);
-                        socketArgs = tokenPool.Pop();
+                        socketArgs = tokenPool.Get();
                         if (socketArgs != null) break;
                     }
                 }
@@ -114,10 +114,23 @@ namespace Bouyei.NetProviderFactory.Udp
             }
             catch (Exception ex)
             {
-                tokenPool.Push(socketArgs);
+                tokenPool.Set(socketArgs);
                 
                 throw ex;
             }
+        }
+
+        /// <summary>
+        /// 同步发送数据
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        /// <param name="remoteEP"></param>
+        /// <returns></returns>
+        public int SendSync(byte[] data, int offset, int size, IPEndPoint remoteEP)
+        {
+            return clientSocket.SendTo(data, offset, size, SocketFlags.None, remoteEP);
         }
 
         /// <summary>
@@ -133,7 +146,7 @@ namespace Bouyei.NetProviderFactory.Udp
                     SentEventHandler(clientSocket, e);
                 }
             }
-            tokenPool.Push(e);
+            tokenPool.Set(e);
         }
 
         /// <summary>

@@ -40,7 +40,7 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             while (receivePool.Count > 0)
             {
-                var item = receivePool.Pop();
+                var item = receivePool.Get();
                 if (item != null) item.Dispose();
             }
         }
@@ -68,7 +68,7 @@ namespace Bouyei.NetProviderFactory.Udp
                 SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs();
                 socketArgs.Completed += SocketArgs_Completed;
                 receiveBufferPool.SetBuffer(socketArgs);
-                receivePool.Push(socketArgs);
+                receivePool.Set(socketArgs);
             }
         }
 
@@ -77,7 +77,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         public void StartReceive()
         {
-            SocketAsyncEventArgs arg = receivePool.Pop();
+            SocketAsyncEventArgs arg = receivePool.Get();
 
             if (!svcReceiveSocket.ReceiveFromAsync(arg))
             {
@@ -126,7 +126,7 @@ namespace Bouyei.NetProviderFactory.Udp
                 }
             }
 
-            receivePool.Push(args);
+            receivePool.Set(args);
 
             StartReceive();
         }

@@ -89,7 +89,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             while (tokenPool.Count > 0)
             {
-                var item = tokenPool.Pop();
+                var item = tokenPool.Get();
                 if (item != null) item.Dispose();
             }
             sendBufferPool.Clear();
@@ -260,13 +260,13 @@ namespace Bouyei.NetProviderFactory.Tcp
                     clientSocket == null ||
                     clientSocket.Connected == false) return;
 
-                tArgs = tokenPool.Pop();
+                tArgs = tokenPool.Get();
                 if (tArgs == null)
                 {
                     while (waitingSignal)
                     {
                         Thread.Sleep(500);
-                        tArgs = tokenPool.Pop();
+                        tArgs = tokenPool.Get();
                         if (tArgs != null) break;
                     }
                 }
@@ -421,10 +421,11 @@ namespace Bouyei.NetProviderFactory.Tcp
                     isConnected = false;
                     if (clientSocket.Connected)
                     {
+                        clientSocket.Disconnect(true);
                         clientSocket.Shutdown(SocketShutdown.Both);
                     }
-                    clientSocket.Close();
 
+                    clientSocket.Close();
                     clientSocket.Dispose();
                     clientSocket = null;
                 }
@@ -481,10 +482,11 @@ namespace Bouyei.NetProviderFactory.Tcp
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
                 tArgs = new SocketAsyncEventArgs();
+                //tArgs.DisconnectReuseSocket = true;
                 tArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 tArgs.UserToken = new SocketToken(i);
                 sendBufferPool.SetBuffer(tArgs);
-                tokenPool.Push(tArgs);
+                tokenPool.Set(tArgs);
             }
         }
 
@@ -494,18 +496,28 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessSentHandler(SocketAsyncEventArgs e)
         {
+            SocketToken sToken = e.UserToken as SocketToken;
             try
             {
-                //isConnected = (e.SocketError == SocketError.Success);
-                if(e.DisconnectReuseSocket==false)e.DisconnectReuseSocket = true;
-                tokenPool.Push(e);
-                
-                if (SentCallback != null)
-                    SentCallback(e.UserToken as SocketToken, e.BytesTransferred);
+                //if (e.DisconnectReuseSocket == false)
+                //    e.DisconnectReuseSocket = true;
+                if (e.SocketError == SocketError.Success)
+                {
+                    if (SentCallback != null)
+                        SentCallback(sToken, e.BytesTransferred);
+                }
+                else
+                {
+                    Close(e);
+                }
             }
             catch (Exception ex)
             {
                 throw ex;
+            }
+            finally
+            {
+                tokenPool.Set(e);
             }
         }
 
@@ -515,25 +527,27 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessReceiveHandler(SocketAsyncEventArgs e)
         {
+            SocketToken sToken = e.UserToken as SocketToken;
+
             try
             {
                 if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                 {
                     if (ReceiveOffsetCallback != null)
-                        ReceiveOffsetCallback(e.UserToken as SocketToken, e.Buffer, e.Offset, e.BytesTransferred);
+                        ReceiveOffsetCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);
 
                     if (RecievedCallback != null)
                     {
                         if (e.Offset == 0 && e.BytesTransferred == e.Buffer.Length)
                         {
-                            RecievedCallback(e.UserToken as SocketToken, e.Buffer);
+                            RecievedCallback(sToken, e.Buffer);
                         }
                         else
                         {
                             byte[] realBytes = new byte[e.BytesTransferred];
 
                             Buffer.BlockCopy(e.Buffer, e.Offset, realBytes, 0, e.BytesTransferred);
-                            RecievedCallback(e.UserToken as SocketToken, realBytes);
+                            RecievedCallback(sToken, realBytes);
                         }
                     }
 
@@ -547,7 +561,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 else
                 {
                     if (DisconnectedCallback != null)
-                        DisconnectedCallback(e.UserToken as SocketToken);
+                        DisconnectedCallback(sToken);
                 }
             }
             catch (Exception ex)

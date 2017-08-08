@@ -118,6 +118,11 @@ namespace Bouyei.NetProviderFactory.Udp
             socketSend.Send(data, offset, size, waitingSignal,ep);
         }
 
+        public int SendSync(byte[] data,int offset,int size,IPEndPoint remoteEP)
+        {
+          return  socketSend.SendSync(data, offset, size, remoteEP);
+        }
+
         void sendSocket_SentEventHandler(object sender, SocketAsyncEventArgs e)
         {
             if (SentCallbackHandler != null)

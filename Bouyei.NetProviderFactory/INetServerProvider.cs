@@ -31,6 +31,10 @@ namespace Bouyei.NetProviderFactory
 
         void Send(SocketToken sToken, byte[] buffer, int offset, int size, bool waitingSignal = true);
 
+        int SendSync(SocketToken sToken, byte[] buffer);
+
+        int SendSync(SocketToken sToken, byte[] buffer, int offset, int size);
+
         void Stop();
 
     }

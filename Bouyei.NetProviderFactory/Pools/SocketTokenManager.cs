@@ -6,7 +6,7 @@ namespace Bouyei.NetProviderFactory
 {
     internal class SocketTokenManager<T>
     {
-        private Queue<T> stack = null;
+        private Queue<T> collection = null;
         private int used = 0;
 
         /// <summary>
@@ -14,7 +14,7 @@ namespace Bouyei.NetProviderFactory
         /// </summary>
         public int Count
         {
-            get { return stack.Count; }
+            get { return collection.Count; }
         }
 
         /// <summary>
@@ -23,14 +23,14 @@ namespace Bouyei.NetProviderFactory
         /// <param name="capacity"></param>
         public SocketTokenManager(int capacity = 32)
         {
-            stack = new Queue<T>(capacity);
+            collection = new Queue<T>(capacity);
         }
 
         /// <summary>
-        /// 出栈
+        /// 取出
         /// </summary>
         /// <returns></returns>
-        public T Pop()
+        public T Get()
         {
             while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
             {
@@ -38,7 +38,7 @@ namespace Bouyei.NetProviderFactory
             }
             try
             {
-                if (stack.Count > 0) return stack.Dequeue();
+                if (collection.Count > 0) return collection.Dequeue();
                 else return default(T);
             }
             finally
@@ -48,10 +48,10 @@ namespace Bouyei.NetProviderFactory
         }
 
         /// <summary>
-        /// 入栈
+        /// 放回
         /// </summary>
         /// <param name="item"></param>
-        public void Push(T item)
+        public void Set(T item)
         {
             while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
             {
@@ -59,7 +59,7 @@ namespace Bouyei.NetProviderFactory
             }
             try
             {
-                stack.Enqueue(item);
+                collection.Enqueue(item);
             }
             finally
             {
@@ -78,7 +78,7 @@ namespace Bouyei.NetProviderFactory
             }
             try
             {
-                stack.Clear();
+                collection.Clear();
             }
             finally
             {
