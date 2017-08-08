@@ -6,7 +6,7 @@ namespace Bouyei.NetProviderFactory
 {
     internal class SocketTokenManager<T>
     {
-        private Stack<T> stack = null;
+        private Queue<T> stack = null;
         private int used = 0;
 
         /// <summary>
@@ -23,7 +23,7 @@ namespace Bouyei.NetProviderFactory
         /// <param name="capacity"></param>
         public SocketTokenManager(int capacity = 32)
         {
-            stack = new Stack<T>(capacity);
+            stack = new Queue<T>(capacity);
         }
 
         /// <summary>
@@ -38,7 +38,7 @@ namespace Bouyei.NetProviderFactory
             }
             try
             {
-                if (stack.Count > 0) return stack.Pop();
+                if (stack.Count > 0) return stack.Dequeue();
                 else return default(T);
             }
             finally
@@ -59,7 +59,7 @@ namespace Bouyei.NetProviderFactory
             }
             try
             {
-                stack.Push(item);
+                stack.Enqueue(item);
             }
             finally
             {

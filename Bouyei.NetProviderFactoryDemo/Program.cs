@@ -12,8 +12,9 @@ namespace Bouyei.NetProviderFactoryDemo
         static void Main(string[] args)
         {
             int port = 13145;
+            int svc_send_cnt = 0, svc_rec_cnt = 0, client_send_cnt = 0, client_rec_cnt = 0;
             //服务端
-            NetServerProvider serverSocket = NetServerProvider.CreateNetServerProvider(4096,128);
+            NetServerProvider serverSocket = NetServerProvider.CreateNetServerProvider();
             byte[] sendbuffer = new byte[4095];
             for (int i = 0; i < sendbuffer.Length; ++i)
             {
@@ -25,13 +26,17 @@ namespace Bouyei.NetProviderFactoryDemo
             {
                 try
                 {
-                    Console.WriteLine("complate:from client[" + offset + "cnt:" + count);
+                   // Console.WriteLine("complate:from client[" + offset + "cnt:" + count);
                     serverSocket.Send(sToken, Encoding.UTF8.GetBytes("hi I'm server:" + DateTime.Now));
+                    svc_rec_cnt += 1;
                 }
                 catch(Exception ex)
                 {
                     Console.WriteLine(ex.ToString());
                 }
+            });
+            serverSocket.SentHanlder = new OnSentHandler((stoken,count) => {
+                svc_send_cnt += 1;
             });
 
             bool isOk=serverSocket.Start(port);
@@ -40,39 +45,52 @@ namespace Bouyei.NetProviderFactoryDemo
                 Console.WriteLine("已启动服务。。。");
 
                 //客户端
-                NetClientProvider clientSocket = NetClientProvider.CreateNetClientProvider(4096,128);
-                //if (clientSocket.ConnectSync(port, "127.0.0.1"))
-                //{
-                //    clientSocket.SendSync(Encoding.UTF8.GetBytes("I'm client" + DateTime.Now), (buffer) =>
-                //    {
-                //        Console.WriteLine("client:from server[" + Encoding.UTF8.GetString(buffer));
-                //    });
-                //}
-
-                //异步连接
+                NetClientProvider clientSocket = NetClientProvider.CreateNetClientProvider();
+                clientSocket.SentHanlder = new OnSentHandler((stoken, cont) =>
+                {
+                    client_send_cnt += 1;
+                });
+                 //异步连接
                 clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
                 {
                     try
                     {
-                        Console.WriteLine("client:from server[" + Encoding.UTF8.GetString(buffer, offset, count));
+                        client_rec_cnt += 1;
+                        //Console.WriteLine("client:from server[" + Encoding.UTF8.GetString(buffer, offset, count));
                     }
                     catch(Exception ex)
                     {
                         Console.WriteLine(ex.Message);
                     }
                 });
-                clientSocket.Connect(port, "127.0.0.1");
-                System.Threading.Thread.Sleep(1000);
+                bool rt = clientSocket.ConnectTo(port, "127.0.0.1");
+                if (rt)
+                {
 
-                Parallel.For(0, 100000, (i) => {
-                    if (clientSocket.SendBufferNumber > 0)
-                        clientSocket.Send(sendbuffer);
-
-                    if (clientSocket.SendBufferNumber <= 1)
+                    int f = 0;
+                    for (int i = 0; i < 100000; i++)
                     {
-                        System.Threading.Thread.Sleep(1000);
+                        ++f;
+                        if (f > 0 && f % 100 == 0)
+                        {
+                            Console.WriteLine(clientSocket.SendBufferNumber);
+                            Console.WriteLine(string.Format("svc[send:{0},rec:{1}],client[send{2},rec:{3}]", svc_send_cnt, svc_rec_cnt, client_send_cnt, client_rec_cnt));
+                            f = 0;
+                        }
+                        clientSocket.Send(sendbuffer);
                     }
-                });
+
+                    //Parallel.For(0, 100000, (i, state) =>
+                    //{
+                    //    clientSocket.Send(sendbuffer);
+                    //    ++f;
+                    //    if (f % 100 == 0)
+                    //    {
+                    //        Console.WriteLine(clientSocket.SendBufferNumber);
+                    //        Console.WriteLine(string.Format("svc[send:{0},rec:{1}],client[send{2},rec:{3}]", svc_send_cnt, svc_rec_cnt, client_send_cnt, client_rec_cnt));
+                    //    }
+                    //});
+                }
             }
             Console.WriteLine("complete");
             Console.ReadKey();

@@ -11,9 +11,12 @@ namespace Bouyei.NetProviderFactory.Tcp
         #region variable
         private bool isConnected = false;
         private bool _isDisposed = false;
+        private ChannelProviderType channelProviderState = ChannelProviderType.Async;
         private int blockSize = 4096;
-        private int maxNumberOfConnections = 8;
+        private int concurrentSend = 8;
         private byte[] receiveBuffer = null;
+        private object readwritelock = new object();
+        private ManualResetEvent mReset = new ManualResetEvent(false);
         private Socket clientSocket = null;
         private SocketTokenManager<SocketAsyncEventArgs> tokenPool = null;
         private SocketBufferManager sendBufferPool = null;
@@ -55,6 +58,11 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         public int SendBufferPoolNumber { get { return tokenPool.Count; } }
 
+        public ChannelProviderType ChannelProviderState
+        {
+            get { return channelProviderState; }
+        }
+
         #endregion
 
         #region constructor
@@ -72,7 +80,6 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 DisposeSocketPool();
                 clientSocket.Dispose();
-                sendBufferPool.Clear();
                 //recBufferPool.Clear();
                 _isDisposed = true;
             }
@@ -85,19 +92,19 @@ namespace Bouyei.NetProviderFactory.Tcp
                 var item = tokenPool.Pop();
                 if (item != null) item.Dispose();
             }
+            sendBufferPool.Clear();
         }
 
         /// <summary>
         /// 构造
         /// </summary>
-        /// <param name="blockSize"></param>
-        /// <param name="maxNumberOfConnections"></param>
-        public TcpClientProvider(int blockSize = 4096, int maxNumberOfConnections = 8)
+        /// <param name="chunkBufferSize">发送块缓冲区大小</param>
+        /// <param name="concurrentSend">并发发送数</param>
+        public TcpClientProvider(int chunkBufferSize = 4096, int concurrentSend = 8)
         {
-            this.maxNumberOfConnections = maxNumberOfConnections;
-            this.blockSize = blockSize;
-            this.receiveBuffer = new byte[blockSize];
-            InitializePool(maxNumberOfConnections);
+            this.concurrentSend = concurrentSend;
+            this.blockSize = chunkBufferSize;
+            this.receiveBuffer = new byte[chunkBufferSize];
         }
 
         #endregion
@@ -115,12 +122,12 @@ namespace Bouyei.NetProviderFactory.Tcp
                 if (isConnected ||
                     clientSocket != null)
                 {
-                    clientSocket.Disconnect(true);
-                    clientSocket.Close();
-                    clientSocket.Dispose();
+                    Close();
                 }
 
                 isConnected = false;
+                channelProviderState = ChannelProviderType.Async;
+                InitializePool(concurrentSend);
 
                 IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
@@ -128,7 +135,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
                 args.RemoteEndPoint = ips;
-                args.UserToken = new SocketToken() { TokenSocket = clientSocket };
+                args.UserToken = new SocketToken(-1) { TokenSocket = clientSocket };
 
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
@@ -136,6 +143,54 @@ namespace Bouyei.NetProviderFactory.Tcp
                 {
                     ProcessConnectHandler(args);
                 }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// 异步等待连接返回结果
+        /// </summary>
+        /// <param name="port"></param>
+        /// <param name="ip"></param>
+        /// <returns></returns>
+        public bool ConnectTo(int port,string ip)
+        {
+            try
+            {
+                if (isConnected ||
+                    clientSocket != null)
+                {
+                    Close();
+                }
+
+                isConnected = false;
+                channelProviderState = ChannelProviderType.AsyncWait;
+
+                IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
+
+                clientSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+
+                //连接事件绑定
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+                args.RemoteEndPoint = ips;
+                args.UserToken = new SocketToken(-1) { TokenSocket = clientSocket };
+
+                args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+
+                if (!clientSocket.ConnectAsync(args))
+                {
+                    ProcessConnectHandler(args);
+                }
+                mReset.WaitOne();
+                isConnected = clientSocket.Connected;
+                
+                if (isConnected)
+                    InitializePool(concurrentSend);
+
+                return isConnected;
             }
             catch (Exception ex)
             {
@@ -155,12 +210,11 @@ namespace Bouyei.NetProviderFactory.Tcp
             if (isConnected ||
                 clientSocket != null)
             {
-                clientSocket.Disconnect(true);
-                clientSocket.Close();
-                clientSocket.Dispose();
+                Close();
             }
 
             isConnected = false;
+            channelProviderState = ChannelProviderType.Sync;
             int retry = 3;
 
             IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
@@ -186,9 +240,9 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// 异步发送数据
         /// </summary>
         /// <param name="buffer"></param>
-        public void Send(byte[] buffer)
+        public void Send(byte[] buffer,bool waitingSignal=true)
         {
-            Send(buffer, 0, buffer.Length);
+            Send(buffer, 0, buffer.Length, waitingSignal);
         }
 
         /// <summary>
@@ -197,31 +251,35 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="buffer"></param>
         /// <param name="offset"></param>
         /// <param name="size"></param>
-        public void Send(byte[] buffer, int offset, int size)
+        public void Send(byte[] buffer, int offset, int size, bool waitingSignal = true)
         {
+            SocketAsyncEventArgs tArgs = null;
             try
             {
                 if (isConnected == false ||
                     clientSocket == null ||
                     clientSocket.Connected == false) return;
 
-                int retry = 3;
-                again:
-                SocketAsyncEventArgs tArgs = tokenPool.Pop();
+                tArgs = tokenPool.Pop();
                 if (tArgs == null)
                 {
-                    if (retry <= 0) throw new Exception("已发送多个数据包但未都完成发送,已终止发送...");
-                    Thread.Sleep(500);
-                    retry -= 1;
-                    goto again;
+                    while (waitingSignal)
+                    {
+                        Thread.Sleep(500);
+                        tArgs = tokenPool.Pop();
+                        if (tArgs != null) break;
+                    }
                 }
+                if (tArgs == null)
+                    throw new Exception("发送缓冲池已用完,等待回收...");
 
                 if (!sendBufferPool.WriteBuffer(tArgs, buffer, 0, buffer.Length))
                 {
                     tArgs.SetBuffer(buffer, 0, buffer.Length);
                 }
 
-                 ((SocketToken)tArgs.UserToken).TokenSocket = clientSocket;
+                if (tArgs.UserToken == null)
+                    ((SocketToken)tArgs.UserToken).TokenSocket = clientSocket;
 
                 if (!clientSocket.SendAsync(tArgs))
                 {
@@ -252,6 +310,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <returns></returns>
         public int SendSync(byte[] buffer, Action<int, byte[]> recAct = null, int recBufferSize = 4096)
         {
+            if (channelProviderState != ChannelProviderType.Sync)
+            {
+                throw new Exception("需要使用同步连接...ConnectSync");
+            }
+
             int sent = clientSocket.Send(buffer);
             if (recAct != null && sent > 0)
             {
@@ -265,12 +328,73 @@ namespace Bouyei.NetProviderFactory.Tcp
         }
 
         /// <summary>
+        /// 指定缓冲区接收数据
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        /// <param name="recBufferSize"></param>
+        /// <param name="recAct"></param>
+        /// <returns></returns>
+        public int SendSync(byte[] buffer,int offset,int size,int recBufferSize=4096
+            ,Action<int,byte[]>recAct=null)
+        {
+            if (channelProviderState != ChannelProviderType.Sync)
+            {
+                throw new Exception("需要使用同步连接...ConnectSync");
+            }
+            int sent = clientSocket.Send(buffer, offset, size, SocketFlags.None);
+            if (recAct != null && sent > 0)
+            {
+                byte[] recBuffer = new byte[recBufferSize];
+
+                int cnt = clientSocket.Receive(recBuffer, recBuffer.Length, 0);
+
+                recAct(cnt, recBuffer);
+            }
+            return sent;
+        }
+
+        /// <summary>
+        /// 指定缓冲区引用接受数据
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        /// <param name="recOffset"></param>
+        /// <param name="recSize"></param>
+        /// <param name="recBuffer"></param>
+        /// <param name="recAct"></param>
+        /// <returns></returns>
+        public int SendSync(byte[] buffer, int offset, int size
+            ,ref int recOffset,ref int recSize,ref byte[] recBuffer
+            ,Action<int> recAct = null)
+        {
+            if (channelProviderState != ChannelProviderType.Sync)
+            {
+                throw new Exception("需要使用同步连接...ConnectSync");
+            }
+            int sent = clientSocket.Send(buffer, offset, size, SocketFlags.None);
+            if (recAct != null && sent > 0)
+            {
+                int cnt = clientSocket.Receive(recBuffer, recOffset, recSize, 0);
+
+                recAct(cnt);
+            }
+            return sent;
+        }
+
+        /// <summary>
         /// 同步接收数据
         /// </summary>
         /// <param name="recBufferSize"></param>
         /// <param name="recAct"></param>
         public void ReceiveSync(Action<int, byte[]> recAct,int recBufferSize = 4096)
         {
+            if (channelProviderState != ChannelProviderType.Sync)
+            {
+                throw new Exception("需要使用同步连接...ConnectSync");
+            }
             int cnt = 0;
             byte[] buffer = new byte[recBufferSize];
             do
@@ -315,15 +439,6 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         #region private method
 
-        private void CreateSocketAsyncArgs()
-        {
-            SocketAsyncEventArgs tArgs = new SocketAsyncEventArgs();
-            tArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-            tArgs.UserToken = new SocketToken(0);
-            sendBufferPool.SetBuffer(tArgs);
-            tokenPool.Push(tArgs);
-        }
-
         /// <summary>
         /// 关闭连接对象
         /// </summary>
@@ -339,6 +454,17 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
         }
 
+        private void Close()
+        {
+            if (clientSocket != null)
+            {
+                clientSocket.Disconnect(true);
+                clientSocket.Close();
+                clientSocket.Dispose();
+            }
+            DisposeSocketPool();
+        }
+
         /// <summary>
         /// 初始化发送对象池
         /// </summary>
@@ -350,10 +476,11 @@ namespace Bouyei.NetProviderFactory.Tcp
 
             tokenPool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
             sendBufferPool = new SocketBufferManager(maxNumberOfConnections, blockSize);
-
+          
+            SocketAsyncEventArgs tArgs = null;
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
-                SocketAsyncEventArgs tArgs = new SocketAsyncEventArgs();
+                tArgs = new SocketAsyncEventArgs();
                 tArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 tArgs.UserToken = new SocketToken(i);
                 sendBufferPool.SetBuffer(tArgs);
@@ -370,7 +497,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             try
             {
                 //isConnected = (e.SocketError == SocketError.Success);
-
+                if(e.DisconnectReuseSocket==false)e.DisconnectReuseSocket = true;
                 tokenPool.Push(e);
                 
                 if (SentCallback != null)
@@ -392,8 +519,8 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                 {
-                    if(ReceiveOffsetCallback!=null)
-                    ReceiveOffsetCallback(e.UserToken as SocketToken, e.Buffer, e.Offset, e.BytesTransferred);
+                    if (ReceiveOffsetCallback != null)
+                        ReceiveOffsetCallback(e.UserToken as SocketToken, e.Buffer, e.Offset, e.BytesTransferred);
 
                     if (RecievedCallback != null)
                     {
@@ -409,7 +536,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                             RecievedCallback(e.UserToken as SocketToken, realBytes);
                         }
                     }
-                          
+
                     if (!isConnected) return;
 
                     if (!clientSocket.ReceiveAsync(e))
@@ -417,11 +544,11 @@ namespace Bouyei.NetProviderFactory.Tcp
                         ProcessReceiveHandler(e);
                     }
                 }
-                //else
-                //{
-                //    if (DisconnectedCallback != null)
-                //        DisconnectedCallback(e.UserToken as SocketToken);
-                //}
+                else
+                {
+                    if (DisconnectedCallback != null)
+                        DisconnectedCallback(e.UserToken as SocketToken);
+                }
             }
             catch (Exception ex)
             {
@@ -438,6 +565,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             try
             {
                 isConnected = (e.SocketError == SocketError.Success);
+                if (channelProviderState == ChannelProviderType.AsyncWait) mReset.Set();//异步等待连接
 
                 if (isConnected)
                 {

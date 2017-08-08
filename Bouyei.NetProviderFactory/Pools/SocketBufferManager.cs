@@ -12,7 +12,7 @@ namespace Bouyei.NetProviderFactory
         int blockSize;
         int used = 0;
         byte[] buffer;
-        Stack<int> freeBufferIndexPool;
+        Queue<int> freeBufferIndexPool;
 
         /// <summary>
         /// 缓冲区管理构造
@@ -25,7 +25,7 @@ namespace Bouyei.NetProviderFactory
             this.curIndex = 0;
             totalSize = maxCounts * blockSize;
             buffer = new byte[totalSize];
-            freeBufferIndexPool = new Stack<int>(maxCounts);
+            freeBufferIndexPool = new Queue<int>(maxCounts);
         }
 
         public void Clear()
@@ -49,7 +49,7 @@ namespace Bouyei.NetProviderFactory
                 if (freeBufferIndexPool.Count > 0)
                 {
                     agrs.SetBuffer(this.buffer,
-                        this.freeBufferIndexPool.Pop(),
+                        this.freeBufferIndexPool.Dequeue(),
                         blockSize);
                 }
                 else
@@ -114,7 +114,7 @@ namespace Bouyei.NetProviderFactory
             }
             try
             {
-                this.freeBufferIndexPool.Push(args.Offset);
+                this.freeBufferIndexPool.Enqueue(args.Offset);
                 args.SetBuffer(null, 0, 0);
             }
             finally

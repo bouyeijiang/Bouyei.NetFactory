@@ -33,11 +33,11 @@ namespace Bouyei.NetProviderFactory
             set
             {
                 _receiveHanlder = value;
-                if (ProviderType.Tcp == NetProviderType)
+                if (NetProviderType.Tcp == NetProviderType)
                 {
                     tcpServerProvider.ReceivedCallback = _receiveHanlder;
                 }
-                else if (ProviderType.Udp == NetProviderType)
+                else if (NetProviderType.Udp == NetProviderType)
                 {
                     udpServerProvider.ReceiveCallbackHandler = _receiveHanlder;
                 }
@@ -51,11 +51,11 @@ namespace Bouyei.NetProviderFactory
             set
             {
                 _sentHanlder = value;
-                if (ProviderType.Tcp == NetProviderType)
+                if (NetProviderType.Tcp == NetProviderType)
                 {
                     tcpServerProvider.SentCallback = _sentHanlder;
                 }
-                else if (ProviderType.Udp == NetProviderType)
+                else if (NetProviderType.Udp == NetProviderType)
                 {
                     udpServerProvider.SentCallbackHandler = _sentHanlder;
                 }
@@ -69,7 +69,7 @@ namespace Bouyei.NetProviderFactory
             set
             {
                 _acceptHanlder = value;
-                if (ProviderType.Tcp == NetProviderType)
+                if (NetProviderType.Tcp == NetProviderType)
                 {
                     tcpServerProvider.AcceptedCallback = _acceptHanlder;
                 }
@@ -83,11 +83,11 @@ namespace Bouyei.NetProviderFactory
             set
             {
                 _receiveOffsetHandler = value;
-                if (ProviderType.Tcp == NetProviderType)
+                if (NetProviderType.Tcp == NetProviderType)
                 {
                     tcpServerProvider.ReceiveOffsetCallback = _receiveOffsetHandler;
                 }
-                else if (ProviderType.Udp == NetProviderType)
+                else if (NetProviderType.Udp == NetProviderType)
                 {
                     udpServerProvider.ReceiveOffsetHanlder = _receiveOffsetHandler;
                 }
@@ -101,18 +101,18 @@ namespace Bouyei.NetProviderFactory
             set
             {
                 _disconnectedHanlder = value;
-                if (ProviderType.Tcp == NetProviderType)
+                if (NetProviderType.Tcp == NetProviderType)
                 {
                     tcpServerProvider.DisconnectedCallback = _disconnectedHanlder;
                 }
-                else if (ProviderType.Udp == NetProviderType)
+                else if (NetProviderType.Udp == NetProviderType)
                 {
                     udpServerProvider.DisconnectedCallbackHandler = _disconnectedHanlder;
                 }
             }
         }
 
-        public ProviderType NetProviderType { get; private set; }
+        public NetProviderType NetProviderType { get; private set; }
 
         #endregion
 
@@ -141,17 +141,33 @@ namespace Bouyei.NetProviderFactory
         public NetServerProvider(
             int bufferSizeByConnection = 4096,
             int maxNumberOfConnections = 1024,
-            ProviderType netProviderType = ProviderType.Tcp)
+            NetProviderType netProviderType = NetProviderType.Tcp)
         {
             this.NetProviderType = netProviderType;
             this.bufferSizeByConnection = bufferSizeByConnection;
             this.maxNumberOfConnections = maxNumberOfConnections;
 
-            if (netProviderType == ProviderType.Tcp)
+            if (netProviderType == NetProviderType.Tcp)
             {
                 tcpServerProvider = new TcpServerProvider(maxNumberOfConnections, bufferSizeByConnection);
             }
-            else if (netProviderType == ProviderType.Udp)
+            else if (netProviderType == NetProviderType.Udp)
+            {
+                udpServerProvider = new UdpServerProvider();
+            }
+        }
+
+        public NetServerProvider(NetProviderType netProviderType)
+        {
+            this.NetProviderType = netProviderType;
+            this.bufferSizeByConnection = 4096;
+            this.maxNumberOfConnections = 1024;
+
+            if (netProviderType == NetProviderType.Tcp)
+            {
+                tcpServerProvider = new TcpServerProvider(maxNumberOfConnections, bufferSizeByConnection);
+            }
+            else if (netProviderType == NetProviderType.Udp)
             {
                 udpServerProvider = new UdpServerProvider();
             }
@@ -160,7 +176,7 @@ namespace Bouyei.NetProviderFactory
         public static NetServerProvider CreateNetServerProvider(
             int bufferSizeByConnection = 4096,
             int maxNumberOfConnections = 1024,
-            ProviderType netProviderType = ProviderType.Tcp)
+            NetProviderType netProviderType = NetProviderType.Tcp)
         {
             return new NetServerProvider(bufferSizeByConnection, maxNumberOfConnections, netProviderType);
         }
@@ -170,11 +186,11 @@ namespace Bouyei.NetProviderFactory
         #region public method
         public bool Start(int port, string ip = "0.0.0.0")
         {
-            if (NetProviderType == ProviderType.Tcp)
+            if (NetProviderType == NetProviderType.Tcp)
             {
                 return tcpServerProvider.Start(port, ip);
             }
-            else if (NetProviderType == ProviderType.Udp)
+            else if (NetProviderType == NetProviderType.Udp)
             {
                 udpServerProvider.Start(port, bufferSizeByConnection, maxNumberOfConnections);
                 return true;
@@ -184,41 +200,41 @@ namespace Bouyei.NetProviderFactory
 
         public void Stop()
         {
-            if (NetProviderType == ProviderType.Tcp)
+            if (NetProviderType == NetProviderType.Tcp)
             {
                 tcpServerProvider.Stop();
             }
-            else if (NetProviderType == ProviderType.Udp)
+            else if (NetProviderType == NetProviderType.Udp)
             {
                 udpServerProvider.Stop();
             }
         }
 
-        public void Send(SocketToken sToken, byte[] buffer)
+        public void Send(SocketToken sToken, byte[] buffer,bool waitingSignal=true)
         {
-            if (NetProviderType == ProviderType.Tcp)
+            if (NetProviderType == NetProviderType.Tcp)
             {
-                tcpServerProvider.Send(sToken, buffer, 0, buffer.Length);
+                tcpServerProvider.Send(sToken, buffer, 0, buffer.Length,waitingSignal);
             }
-            else if (NetProviderType == ProviderType.Udp)
+            else if (NetProviderType == NetProviderType.Udp)
             {
                 udpServerProvider.Send(
                     (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint,
-                    buffer, 0, buffer.Length);
+                    buffer, 0, buffer.Length,waitingSignal);
             }
         }
 
-        public void Send(SocketToken sToken, byte[] buffer,int offset,int size)
+        public void Send(SocketToken sToken, byte[] buffer, int offset, int size, bool waitingSignal = true)
         {
-            if (NetProviderType == ProviderType.Tcp)
+            if (NetProviderType == NetProviderType.Tcp)
             {
-                tcpServerProvider.Send(sToken, buffer, offset, size);
+                tcpServerProvider.Send(sToken, buffer, offset, size,waitingSignal);
             }
-            else if (NetProviderType == ProviderType.Udp)
+            else if (NetProviderType == NetProviderType.Udp)
             {
                 udpServerProvider.Send(
                     (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint,
-                    buffer, offset, size);
+                    buffer, offset, size, waitingSignal);
             }
         }
         #endregion

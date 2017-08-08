@@ -13,9 +13,16 @@ using System.Threading.Tasks;
 
 namespace Bouyei.NetProviderFactory
 {
-    public enum ProviderType
+    public enum NetProviderType
     {
         Tcp = 0,
         Udp = 1
+    }
+
+    public enum ChannelProviderType
+    {
+        Async = 0,
+        AsyncWait = 1,
+        Sync = 2
     }
 }

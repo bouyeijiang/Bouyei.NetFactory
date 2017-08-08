@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Sockets;
 using System.Net;
+using System.Threading;
 using System.Collections.Generic;
 
 namespace Bouyei.NetProviderFactory.Udp
@@ -127,9 +128,18 @@ namespace Bouyei.NetProviderFactory.Udp
             }
         }
 
-        public void Send(byte[] buffer,int offset,int size)
+        public void Send(byte[] buffer,int offset,int size,bool waitingSignal=true)
         {
             SocketAsyncEventArgs sendArgs = sendPool.Pop();
+            if (sendArgs == null)
+            {
+                while (waitingSignal)
+                {
+                    Thread.Sleep(1000);
+                    sendArgs = sendPool.Pop();
+                    if (sendArgs != null) break;
+                }
+            }
             if (sendArgs == null)
                 throw new Exception("发送缓冲池已用完,等待回收...");
 

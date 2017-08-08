@@ -27,9 +27,9 @@ namespace Bouyei.NetProviderFactory
 
         bool Start(int port, string ip = "0.0.0.0");
 
-        void Send(SocketToken sToken, byte[] buffer);
+        void Send(SocketToken sToken, byte[] buffer,bool waitingSignal=true);
 
-        void Send(SocketToken sToken, byte[] buffer, int offset, int size);
+        void Send(SocketToken sToken, byte[] buffer, int offset, int size, bool waitingSignal = true);
 
         void Stop();
 

@@ -24,13 +24,18 @@ namespace Bouyei.NetProviderFactory
 
         OnDisconnectedHandler DisconnectedHanlder { get; set; }
 
+        ChannelProviderType ChannelProviderType { get; }
+        
+
         void Disconnect();
 
         void Connect(int port, string ip);
 
-        void Send(byte[] buffer);
+        bool ConnectTo(int port, string ip);
 
-        void Send(byte[] buffer, int offset, int size);
+        void Send(byte[] buffer, bool waitingSignal = true);
+
+        void Send(byte[] buffer, int offset, int size, bool waitingSignal = true);
 
         bool ConnectSync(int port, string ip);
 

@@ -98,20 +98,20 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// 构造
         /// </summary>
         /// <param name="maxConnections">最大连接数</param>
-        /// <param name="blockSize">接收块缓冲区</param>
-        public TcpServerProvider(int maxConnections = 32, int blockSize = 4096)
+        /// <param name="chunkBufferSize">接收块缓冲区</param>
+        public TcpServerProvider(int maxConnections = 32, int chunkBufferSize = 4096)
         {
             this.maxNumber = maxConnections;
 
             acceptSemphoreClients = new Semaphore(maxConnections, maxConnections);
 
-            recvBuffer = new SocketBufferManager(maxConnections, blockSize);
+            recvBuffer = new SocketBufferManager(maxConnections, chunkBufferSize);
             acceptPool = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
 
             //maxConnections = maxConnections >= 65536 ? (maxConnections >> 1) : maxConnections;
 
             sendPool = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
-            sendBuffer = new SocketBufferManager(maxConnections, blockSize);
+            sendBuffer = new SocketBufferManager(maxConnections, chunkBufferSize);
         }
 
         #endregion
@@ -203,22 +203,25 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <summary>
         /// 异步发送数据
         /// </summary>
-        public void Send(SocketToken sToken, byte[] buffer,int offset,int size)
+        public void Send(SocketToken sToken, byte[] buffer, int offset, int size, bool waitingSignal = true)
         {
             try
             {
                 //从连接池中取出一个发送的对象
-                int retry = 3;
-                again:
+                
                 SocketAsyncEventArgs tArgs = sendPool.Pop();
                 //确保发送连接池不为空,否则尝试3次是否有可用发送缓冲对象
                 if (tArgs == null)
                 {
-                    if (retry <= 0) throw new Exception("无可用的发送池");
-                    Thread.Sleep(500);
-                    retry -= 1;
-                    goto again;
+                    while (waitingSignal)
+                    {
+                        Thread.Sleep(500);
+                        tArgs = sendPool.Pop();
+                        if (tArgs != null) break;
+                    }
                 }
+                if (tArgs == null)
+                    throw new Exception("发送缓冲池已用完,等待回收...");
 
                 tArgs.UserToken = sToken;
                 if (!sendBuffer.WriteBuffer(tArgs, buffer,offset,size))
@@ -248,6 +251,19 @@ namespace Bouyei.NetProviderFactory.Tcp
             return sToken.TokenSocket.Send(buffer);
         }
 
+        /// <summary>
+        /// 同步发送偏移数据
+        /// </summary>
+        /// <param name="sToken"></param>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public int SendSync(SocketToken sToken, byte[] buffer, int offset, int size)
+        {
+            return sToken.TokenSocket.Send(buffer, offset, size, SocketFlags.None);
+        }
+
         #endregion
 
         #region private method
@@ -258,9 +274,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         private void InitializeAcceptPool()
         {
             acceptPool.Clear();
+            SocketAsyncEventArgs args = null;
             for (int i = 0; i < maxNumber; ++i)
             {
-                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+                args = new SocketAsyncEventArgs();
+                args.DisconnectReuseSocket = true;
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 args.UserToken = new SocketToken(i);
                 recvBuffer.SetBuffer(args);
@@ -274,10 +292,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         private void InitializeSendPool()
         {
             sendPool.Clear();
-
+            SocketAsyncEventArgs args = null;
             for (int i = 0; i < maxNumber; ++i)
             {
-                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+                args = new SocketAsyncEventArgs();
+                args.DisconnectReuseSocket = true;
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 args.UserToken = new SocketToken(i);
                 sendBuffer.SetBuffer(args);
@@ -298,6 +317,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 if (e == null)
                 {
                     e = new SocketAsyncEventArgs();
+                    e.DisconnectReuseSocket = true;
                     e.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 }
                 else
@@ -385,7 +405,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 sToken = e.UserToken as SocketToken;
 
-                if (e.BytesTransferred > 0)
+                if (e.BytesTransferred > 0 && e.SocketError==SocketError.Success)
                 {
                     if (ReceiveOffsetCallback != null)
                         ReceiveOffsetCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);

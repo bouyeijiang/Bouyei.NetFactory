@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace Bouyei.NetProviderFactory.Udp
 {
@@ -78,7 +79,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         /// <param name="data"></param>
         /// <param name="remoteEP"></param>
-        public void Send(byte[] data,int offset,int size ,IPEndPoint remoteEP)
+        public void Send(byte[] data,int offset,int size,bool waitingSignal,IPEndPoint remoteEP)
         {
             SocketAsyncEventArgs socketArgs = null;
             try
@@ -87,14 +88,20 @@ namespace Bouyei.NetProviderFactory.Udp
                 //如果发送对象池已经为空
                 if (socketArgs == null)
                 {
-                    Initialize(maxCount,blocksize);
-                    socketArgs = tokenPool.Pop();
+                    while (waitingSignal)
+                    {
+                        Thread.Sleep(500);
+                        socketArgs = tokenPool.Pop();
+                        if (socketArgs != null) break;
+                    }
                 }
+                if (socketArgs == null)
+                    throw new Exception("发送缓冲池已用完,等待回收...");
+
                 socketArgs.RemoteEndPoint = remoteEP;
-                
                 if(!sentBufferPool.WriteBuffer(socketArgs,data,offset,size))
                 {
-                    throw new Exception("设置发送缓冲区失败");
+                    socketArgs.SetBuffer(data, offset, size);
                 }
 
                 if (socketArgs.RemoteEndPoint != null)
