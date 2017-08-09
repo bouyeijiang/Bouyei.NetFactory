@@ -273,9 +273,9 @@ namespace Bouyei.NetProviderFactory.Tcp
                 if (tArgs == null)
                     throw new Exception("发送缓冲池已用完,等待回收...");
 
-                if (!sendBufferPool.WriteBuffer(tArgs, buffer, 0, buffer.Length))
+                if (!sendBufferPool.WriteBuffer(tArgs, buffer, offset, size))
                 {
-                    tArgs.SetBuffer(buffer, 0, buffer.Length);
+                    tArgs.SetBuffer(buffer, offset, size);
                 }
 
                 if (tArgs.UserToken == null)
@@ -459,7 +459,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             if (clientSocket != null)
             {
-                clientSocket.Disconnect(true);
+                if (clientSocket.Connected)
+                {
+                    clientSocket.Shutdown(SocketShutdown.Both);
+                    clientSocket.Disconnect(true);
+                }
                 clientSocket.Close();
                 clientSocket.Dispose();
             }
@@ -496,9 +500,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessSentHandler(SocketAsyncEventArgs e)
         {
-            SocketToken sToken = e.UserToken as SocketToken;
             try
             {
+                tokenPool.Set(e);
+                SocketToken sToken = e.UserToken as SocketToken;
+
                 //if (e.DisconnectReuseSocket == false)
                 //    e.DisconnectReuseSocket = true;
                 if (e.SocketError == SocketError.Success)
@@ -514,10 +520,6 @@ namespace Bouyei.NetProviderFactory.Tcp
             catch (Exception ex)
             {
                 throw ex;
-            }
-            finally
-            {
-                tokenPool.Set(e);
             }
         }
 

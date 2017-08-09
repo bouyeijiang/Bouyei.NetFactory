@@ -226,7 +226,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 tArgs.UserToken = sToken;
                 if (!sendBuffer.WriteBuffer(tArgs, buffer,offset,size))
                 {
-                    tArgs.SetBuffer(buffer, 0, buffer.Length);
+                    tArgs.SetBuffer(buffer, offset, size);
                 }
 
                 if (!sToken.TokenSocket.SendAsync(tArgs))
@@ -456,10 +456,13 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessSent(SocketAsyncEventArgs e)
         {
-            SocketToken sToken = e.UserToken as SocketToken;
             try
             {
-                 if (e.SocketError == SocketError.Success)
+                //用完的对象放回对象池
+                sendPool.Set(e);
+                SocketToken sToken = e.UserToken as SocketToken;
+
+                if (e.SocketError == SocketError.Success)
                 {
                     //事件回调传递
                     if (SentCallback != null)
@@ -474,19 +477,6 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 throw ex;
             }
-            finally
-            {
-                //用完的对象放回对象池
-                sendPool.Set(e);
-
-                //if (e.SocketError == SocketError.Success)
-                //{
-                //   if(! sToken.TokenSocket.ReceiveAsync(e))
-                //    {
-                //        ProcessReceive(e);
-                //    }
-                //}
-            }
         }
 
         /// <summary>
@@ -498,20 +488,19 @@ namespace Bouyei.NetProviderFactory.Tcp
             try
             {
                 Interlocked.Decrement(ref numberOfConnections);
+               
+                //将断开的对象重新放回复用队列
+                acceptPool.Set(e);
 
                 //递减信号量
                 acceptSemphoreClients.Release();
+
                 if (DisconnectedCallback != null)
                     DisconnectedCallback(e.UserToken as SocketToken);
             }
             catch (Exception ex)
             {
                 throw ex;
-            }
-            finally
-            {
-                //将断开的对象重新放回复用队列
-                acceptPool.Set(e);
             }
         }
 
