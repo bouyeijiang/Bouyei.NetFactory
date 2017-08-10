@@ -219,7 +219,7 @@ namespace Bouyei.NetProviderFactory
             else if (NetProviderType == NetProviderType.Udp)
             {
                 udpServerProvider.Send(
-                    (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint,
+                    sToken.TokenIpEndPoint,
                     buffer, 0, buffer.Length,waitingSignal);
             }
         }
@@ -228,12 +228,12 @@ namespace Bouyei.NetProviderFactory
         {
             if (NetProviderType == NetProviderType.Tcp)
             {
-                tcpServerProvider.Send(sToken, buffer, offset, size,waitingSignal);
+                tcpServerProvider.Send(sToken, buffer, offset, size, waitingSignal);
             }
             else if (NetProviderType == NetProviderType.Udp)
             {
                 udpServerProvider.Send(
-                    (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint,
+                    sToken.TokenIpEndPoint,
                     buffer, offset, size, waitingSignal);
             }
         }
@@ -246,9 +246,9 @@ namespace Bouyei.NetProviderFactory
             }
             else if (NetProviderType == NetProviderType.Udp)
             {
-             return udpServerProvider.SendSync(
-                    buffer, 0, buffer.Length,
-                    (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint);
+                return udpServerProvider.SendSync(
+                       buffer, 0, buffer.Length,
+                       sToken.TokenIpEndPoint);
             }
             return 0;
         }
@@ -262,7 +262,7 @@ namespace Bouyei.NetProviderFactory
             {
                 return udpServerProvider.SendSync(
                        buffer, offset, size,
-                       (System.Net.IPEndPoint)sToken.TokenSocket.RemoteEndPoint);
+                       sToken.TokenIpEndPoint);
             }
             return 0;
         }

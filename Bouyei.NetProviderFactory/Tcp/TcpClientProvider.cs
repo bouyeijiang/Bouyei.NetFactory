@@ -11,15 +11,14 @@ namespace Bouyei.NetProviderFactory.Tcp
         #region variable
         private bool isConnected = false;
         private bool _isDisposed = false;
-        private ChannelProviderType channelProviderState = ChannelProviderType.Async;
         private int blockSize = 4096;
         private int concurrentSend = 8;
         private byte[] receiveBuffer = null;
-        private object readwritelock = new object();
-        private ManualResetEvent mReset = new ManualResetEvent(false);
         private Socket clientSocket = null;
         private SocketTokenManager<SocketAsyncEventArgs> tokenPool = null;
         private SocketBufferManager sendBufferPool = null;
+        private ChannelProviderType channelProviderState = ChannelProviderType.Async;
+        private ManualResetEvent mReset = new ManualResetEvent(false);
         #endregion
 
         #region property
@@ -87,12 +86,18 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         private void DisposeSocketPool()
         {
-            while (tokenPool.Count > 0)
+            if (tokenPool != null)
             {
-                var item = tokenPool.Get();
-                if (item != null) item.Dispose();
+                while (tokenPool.Count > 0)
+                {
+                    var item = tokenPool.Get();
+                    if (item != null) item.Dispose();
+                }
             }
-            sendBufferPool.Clear();
+            if (sendBufferPool != null)
+            {
+                sendBufferPool.Clear();
+            }
         }
 
         /// <summary>
@@ -466,6 +471,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 }
                 clientSocket.Close();
                 clientSocket.Dispose();
+                clientSocket = null;
             }
             DisposeSocketPool();
         }
@@ -504,6 +510,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 tokenPool.Set(e);
                 SocketToken sToken = e.UserToken as SocketToken;
+                sToken.TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint;
 
                 //if (e.DisconnectReuseSocket == false)
                 //    e.DisconnectReuseSocket = true;
@@ -530,6 +537,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         private void ProcessReceiveHandler(SocketAsyncEventArgs e)
         {
             SocketToken sToken = e.UserToken as SocketToken;
+            sToken.TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint;
 
             try
             {
@@ -592,7 +600,11 @@ namespace Bouyei.NetProviderFactory.Tcp
                     }
                 }
                 if (ConnectedCallback != null)
-                    ConnectedCallback(e.UserToken as SocketToken, isConnected);
+                {
+                    SocketToken sToken=e.UserToken as SocketToken;
+                    sToken.TokenIpEndPoint=(IPEndPoint)e.RemoteEndPoint;
+                    ConnectedCallback(sToken, isConnected);
+                }
             }
             catch (Exception ex)
             {
@@ -612,7 +624,11 @@ namespace Bouyei.NetProviderFactory.Tcp
                 isConnected = (e.SocketError == SocketError.Success);
 
                 if (DisconnectedCallback != null)
-                    DisconnectedCallback(e.UserToken as SocketToken);
+                {
+                    SocketToken sToken = e.UserToken as SocketToken;
+                    sToken.TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint;
+                    DisconnectedCallback(sToken);
+                }
             }
             catch (Exception ex)
             {

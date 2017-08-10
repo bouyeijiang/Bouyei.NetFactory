@@ -14,8 +14,8 @@ namespace Bouyei.NetProviderFactory
     {
         #region variable
         private bool _isDisposed = false;
-        private int bufferSizeByConnection = 2048;
-        private int maxNumberOfConnections = 1024;
+        private int bufferSizeByConnection = 4096;
+        private int maxNumberOfConnections = 64;
         private TcpClientProvider tcpClientProvider = null;
         private UdpClientProvider udpClientProvider = null;
         #endregion
@@ -182,7 +182,23 @@ namespace Bouyei.NetProviderFactory
             }
             else if (netProviderType == NetProviderType.Udp)
             {
-                udpClientProvider = new UdpClientProvider();
+                udpClientProvider = new UdpClientProvider(bufferSizeByConnection,maxNumberOfConnections);
+            }
+        }
+
+        public NetClientProvider(NetProviderType netProviderType)
+        {
+            NetProviderType = netProviderType;
+            this.bufferSizeByConnection = 4096;
+            this.maxNumberOfConnections = 8;
+
+            if (netProviderType == NetProviderType.Tcp)
+            {
+                tcpClientProvider = new TcpClientProvider(bufferSizeByConnection, maxNumberOfConnections);
+            }
+            else if (netProviderType == NetProviderType.Udp)
+            {
+                udpClientProvider = new UdpClientProvider(bufferSizeByConnection,maxNumberOfConnections);
             }
         }
 
@@ -203,6 +219,10 @@ namespace Bouyei.NetProviderFactory
             {
                 tcpClientProvider.Disconnect();
             }
+            else if (NetProviderType == NetProviderType.Udp)
+            {
+                udpClientProvider.Disconnect();
+            }
         }
 
         public void Connect(int port, string ip)
@@ -213,7 +233,7 @@ namespace Bouyei.NetProviderFactory
             }
             else if (NetProviderType == NetProviderType.Udp)
             {
-                udpClientProvider.Initialize(bufferSizeByConnection, port);
+                udpClientProvider.Connect(port, ip);
             }
         }
 
@@ -225,8 +245,7 @@ namespace Bouyei.NetProviderFactory
             }
             else if (NetProviderType == NetProviderType.Udp)
             {
-                udpClientProvider.Initialize(bufferSizeByConnection, port);
-                return true;
+               return udpClientProvider.Connect(port,ip);
             }
             return false;
         }
@@ -287,7 +306,7 @@ namespace Bouyei.NetProviderFactory
             }
             else if (NetProviderType == NetProviderType.Udp)
             {
-                udpClientProvider.Initialize(bufferSizeByConnection, port);
+                udpClientProvider.Connect(port,ip);
                 return true;
             }
             return false;

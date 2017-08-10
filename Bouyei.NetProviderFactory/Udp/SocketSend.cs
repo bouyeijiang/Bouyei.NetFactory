@@ -11,7 +11,7 @@ namespace Bouyei.NetProviderFactory.Udp
         private int blocksize = 0;
         private SocketTokenManager<SocketAsyncEventArgs> tokenPool = null;
         private SocketBufferManager sentBufferPool = null;
-        private Socket clientSocket = null;
+        private Socket sendSocket = null;
         private bool _isDisposed = false;
         /// <summary>
         /// 发送事件回调
@@ -31,7 +31,7 @@ namespace Bouyei.NetProviderFactory.Udp
             if (isDisposing)
             {
                 DisposeSocketPool();
-                clientSocket.Dispose();
+                sendSocket.Dispose();
                 sentBufferPool.Clear();
                 _isDisposed = true;
             }
@@ -52,7 +52,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="maxCountClient">客户端最大数</param>
         public SocketSend()
         {
-            clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            sendSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         }
 
         /// <summary>
@@ -68,6 +68,7 @@ namespace Bouyei.NetProviderFactory.Udp
             for (int i = 0; i < maxCount; ++i)
             {
                 SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs();
+                socketArgs.UserToken =sendSocket;
                 socketArgs.Completed += new EventHandler<SocketAsyncEventArgs>(ClientSocket_Completed);
                 sentBufferPool.SetBuffer(socketArgs);
                 tokenPool.Set(socketArgs);
@@ -99,6 +100,8 @@ namespace Bouyei.NetProviderFactory.Udp
                     throw new Exception("发送缓冲池已用完,等待回收...");
 
                 socketArgs.RemoteEndPoint = remoteEP;
+                Socket s = socketArgs.UserToken as Socket;
+
                 if(!sentBufferPool.WriteBuffer(socketArgs,data,offset,size))
                 {
                     socketArgs.SetBuffer(data, offset, size);
@@ -106,7 +109,7 @@ namespace Bouyei.NetProviderFactory.Udp
 
                 if (socketArgs.RemoteEndPoint != null)
                 {
-                    if (!clientSocket.SendToAsync(socketArgs))
+                    if (!s.SendToAsync(socketArgs))
                     {
                         ProcessSent(socketArgs);
                     }
@@ -130,7 +133,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <returns></returns>
         public int SendSync(byte[] data, int offset, int size, IPEndPoint remoteEP)
         {
-            return clientSocket.SendTo(data, offset, size, SocketFlags.None, remoteEP);
+            return sendSocket.SendTo(data, offset, size, SocketFlags.None, remoteEP);
         }
 
         /// <summary>
@@ -139,14 +142,15 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="e"></param>
         private void ProcessSent(SocketAsyncEventArgs e)
         {
+            tokenPool.Set(e);
+
             if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
             {
                 if (SentEventHandler != null)
                 {
-                    SentEventHandler(clientSocket, e);
+                    SentEventHandler(e.UserToken as Socket, e);
                 }
             }
-            tokenPool.Set(e);
         }
 
         /// <summary>

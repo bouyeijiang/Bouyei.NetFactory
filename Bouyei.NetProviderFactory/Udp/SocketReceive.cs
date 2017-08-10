@@ -6,8 +6,7 @@ namespace Bouyei.NetProviderFactory.Udp
 {
     internal class SocketReceive:IDisposable
     {
-        private Socket svcReceiveSocket = null;
-        private IPEndPoint localEndPoint = null;
+        private Socket receiveSocket = null;
         private SocketTokenManager<SocketAsyncEventArgs> receivePool = null;
         private SocketBufferManager receiveBufferPool = null;
         private bool isClose = false;
@@ -25,10 +24,11 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="bufferSize">接收缓冲区大小</param>
         public SocketReceive(int port)
         {
-            svcReceiveSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-            localEndPoint = new IPEndPoint(IPAddress.Any, port);
-            svcReceiveSocket.Bind(localEndPoint);
+            receiveSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, port);
+            receiveSocket.Bind(localEndPoint);
         }
+ 
 
         public void Dispose()
         {
@@ -38,10 +38,17 @@ namespace Bouyei.NetProviderFactory.Udp
 
         private void DisposeSocketPool()
         {
-            while (receivePool.Count > 0)
+            if (receivePool != null)
             {
-                var item = receivePool.Get();
-                if (item != null) item.Dispose();
+                while (receivePool.Count > 0)
+                {
+                    var item = receivePool.Get();
+                    if (item != null) item.Dispose();
+                }
+            }
+            if (receiveBufferPool != null)
+            {
+                receiveBufferPool.Clear();
             }
         }
 
@@ -51,9 +58,9 @@ namespace Bouyei.NetProviderFactory.Udp
 
             if (isDisposing)
             {
+                isClose = true;
+                receiveSocket.Dispose();
                 DisposeSocketPool();
-                receiveBufferPool.Clear();
-                svcReceiveSocket.Dispose();
                 _isDisposed = true;
             }
         }
@@ -66,6 +73,8 @@ namespace Bouyei.NetProviderFactory.Udp
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
                 SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs();
+                socketArgs.UserToken = receiveSocket;
+                socketArgs.RemoteEndPoint = receiveSocket.LocalEndPoint;
                 socketArgs.Completed += SocketArgs_Completed;
                 receiveBufferPool.SetBuffer(socketArgs);
                 receivePool.Set(socketArgs);
@@ -78,12 +87,13 @@ namespace Bouyei.NetProviderFactory.Udp
         public void StartReceive()
         {
             SocketAsyncEventArgs arg = receivePool.Get();
+            Socket s = arg.UserToken as Socket;
+            isClose = false;
 
-            if (!svcReceiveSocket.ReceiveFromAsync(arg))
+            if (!s.ReceiveFromAsync(arg))
             {
                 ProcessReceive(arg);
             }
-            isClose = false;
         }
 
         /// <summary>
@@ -92,6 +102,11 @@ namespace Bouyei.NetProviderFactory.Udp
         public void StopReceive()
         {
             isClose = true;
+            if (receiveSocket != null)
+            {
+                receiveSocket.Shutdown(SocketShutdown.Both);
+                receiveSocket.Close();
+            }
         }
 
         /// <summary>
@@ -117,16 +132,18 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="args"></param>
         private void ProcessReceive(SocketAsyncEventArgs args)
         {
-            if (isClose) return;
-            if (args.BytesTransferred > 0 && args.SocketError == SocketError.Success)
+            receivePool.Set(args);
+            
+            if (args.BytesTransferred > 0 
+                && args.SocketError == SocketError.Success)
             {
                 if (OnReceived != null)
                 {
-                    OnReceived(svcReceiveSocket, args);
+                    OnReceived(args.UserToken as Socket, args);
                 }
             }
-
-            receivePool.Set(args);
+            
+            if (isClose) return;
 
             StartReceive();
         }

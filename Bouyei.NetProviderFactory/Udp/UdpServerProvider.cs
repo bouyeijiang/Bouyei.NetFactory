@@ -7,8 +7,8 @@ namespace Bouyei.NetProviderFactory.Udp
     public class UdpServerProvider:IDisposable
     {
         #region 变量定义
-        private SocketReceive socketRecieve;
-        private SocketSend socketSend;
+        private SocketReceive socketRecieve=null;
+        private SocketSend socketSend=null;
         private bool _isDisposed = false;
 
         #endregion
@@ -111,7 +111,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="data"></param>
         /// <param name="ip"></param>
         /// <param name="port"></param>
-        public void Send(byte[] data,int offset,int size, string ip, int port,bool waitingSignal=true)
+        public void Send( string ip, int port,byte[] data,int offset,int size,bool waitingSignal=true)
         {
             IPEndPoint ep = new IPEndPoint(IPAddress.Parse(ip), port);
 
@@ -129,16 +129,18 @@ namespace Bouyei.NetProviderFactory.Udp
             {
                 SentCallbackHandler(new SocketToken()
                 {
-                    TokenSocket = e.ConnectSocket
+                    TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint
                 }, e.BytesTransferred);
             }
         }
 
         void receiveSocket_OnReceived(object sender, SocketAsyncEventArgs e)
         {
+            if (isRetryConnect(e)) return;
+
             SocketToken sToken = new SocketToken()
             {
-                TokenSocket = e.ConnectSocket
+                 TokenIpEndPoint=(IPEndPoint)e.RemoteEndPoint
             };
 
             if (ReceiveOffsetHanlder != null)
@@ -160,6 +162,18 @@ namespace Bouyei.NetProviderFactory.Udp
                     }
                 }
             }
+        }
+
+        private bool isRetryConnect(SocketAsyncEventArgs e)
+        {
+            if (e.BytesTransferred == 1 && e.Buffer[0] == 0)
+            {
+                socketSend.Send(new byte[] { 1 }, 0, 1,
+                    true,
+                    (IPEndPoint)e.RemoteEndPoint);
+                return true;
+            }
+            else return false;
         }
     }
 }

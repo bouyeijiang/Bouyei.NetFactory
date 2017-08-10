@@ -7,15 +7,19 @@ namespace Bouyei.NetProviderFactory
     public class SocketToken:IDisposable,IComparable<SocketToken>
     {
         /// <summary>
-        /// 编号
+        /// 会话编号
         /// </summary>
         public int TokenId { get; set; }
        
         /// <summary>
-        /// socket对象
+        /// 会话socket对象
         /// </summary>
         public Socket TokenSocket { get; set; }
-        
+        /// <summary>
+        /// 会话的终结点
+        /// </summary>
+        public IPEndPoint TokenIpEndPoint { get; set; }
+
         private bool _isDisposed = false;
 
         //析构

@@ -364,7 +364,12 @@ namespace Bouyei.NetProviderFactory.Tcp
                 }
 
                 Interlocked.Increment(ref numberOfConnections);
-                ((SocketToken)tArgs.UserToken).TokenSocket = e.AcceptSocket;
+
+                SocketToken sToken= ((SocketToken)tArgs.UserToken);
+                sToken.TokenSocket = e.AcceptSocket;
+                sToken.TokenIpEndPoint = (IPEndPoint)e.AcceptSocket.RemoteEndPoint;
+                tArgs.UserToken = sToken;
+
                 //继续准备下一个接收
                 if (!e.AcceptSocket.ReceiveAsync(tArgs))
                 {
