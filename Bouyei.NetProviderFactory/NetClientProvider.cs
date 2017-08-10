@@ -250,30 +250,6 @@ namespace Bouyei.NetProviderFactory
             return false;
         }
 
-        public void Send(byte[] buffer, IPEndPoint udpEp)
-        {
-            if (NetProviderType == NetProviderType.Tcp)
-            {
-                tcpClientProvider.Send(buffer);
-            }
-            else if (NetProviderType == NetProviderType.Udp)
-            {
-                udpClientProvider.Send(buffer,0,buffer.Length, udpEp);
-            }
-        }
-
-        public void Send(byte[] buffer, int offset, int size, IPEndPoint udpEp)
-        {
-            if (NetProviderType == NetProviderType.Tcp)
-            {
-                tcpClientProvider.Send(buffer,offset,size);
-            }
-            else if (NetProviderType == NetProviderType.Udp)
-            {
-                udpClientProvider.Send(buffer, offset, size, udpEp);
-            }
-        }
-
         public void Send(byte[] buffer,bool waitingSignal=true)
         {
             if (NetProviderType == NetProviderType.Tcp)

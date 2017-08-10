@@ -16,8 +16,6 @@ namespace Bouyei.NetProviderFactory.Udp
         private byte[] receiveBuffer = null;
         private bool isConnected = false;
         private ManualResetEvent mReset = new ManualResetEvent(false);
-        //private SocketAsyncEventArgs sendArgs = null;
-        //private SocketAsyncEventArgs recArgs = null;
         private SocketTokenManager<SocketAsyncEventArgs> sendPool = null;
         private SocketBufferManager sendBuffer = null;
 
@@ -96,7 +94,11 @@ namespace Bouyei.NetProviderFactory.Udp
 
         public void Disconnect()
         {
-           if(clientSocket!=null) clientSocket.Close();
+            isConnected = false;
+            if (clientSocket != null)
+            {
+                clientSocket.Close();
+            }
         }
 
         /// <summary>
@@ -159,39 +161,6 @@ namespace Bouyei.NetProviderFactory.Udp
                 throw ex;
             }
             return isConnected;
-        }
-
-        /// <summary>
-        /// 异步发送数据
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <param name="remoteEP"></param>
-        public void Send(byte[] buffer,int offset,int size, IPEndPoint remoteEP,bool waitingSignal=true)
-        {
-            SocketAsyncEventArgs sendArgs = sendPool.Get();
-            if (sendArgs == null)
-            {
-                while (waitingSignal)
-                {
-                    Thread.Sleep(1000);
-                    sendArgs = sendPool.Get();
-                    if (sendArgs != null) break;
-                }
-            }
-
-            if (sendArgs == null)
-                throw new Exception("发送缓冲池已用完,等待回收...");
-
-            sendArgs.RemoteEndPoint = remoteEP;
-            Socket s = sendArgs.UserToken as Socket;
-
-            if (!sendBuffer.WriteBuffer(sendArgs, buffer, offset, size))
-                sendArgs.SetBuffer(buffer, offset, size);
-
-            if (!s.SendToAsync(sendArgs))
-            {
-                ProcessSent(sendArgs);
-            }
         }
 
         /// <summary>
@@ -277,41 +246,6 @@ namespace Bouyei.NetProviderFactory.Udp
         }
 
         /// <summary>
-        /// 异步发送数据
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <param name="ip"></param>
-        /// <param name="port"></param>
-        public void Send(byte[] buffer, string ip, int port,bool waitingSignal=true)
-        {
-            var serverEP = new IPEndPoint(IPAddress.Parse(ip), port);
-
-            SocketAsyncEventArgs sendArgs = sendPool.Get();
-            if (sendArgs == null)
-            {
-                while (waitingSignal)
-                {
-                    Thread.Sleep(1000);
-                    sendArgs = sendPool.Get();
-                    if (sendArgs != null) break;
-                }
-            }
-            if (sendArgs == null)
-                throw new Exception("发送缓冲池已用完,等待回收...");
-
-            sendArgs.RemoteEndPoint = serverEP;
-            Socket s = sendArgs.UserToken as Socket;
-
-            if (!sendBuffer.WriteBuffer(sendArgs, buffer, 0, buffer.Length))
-                sendArgs.SetBuffer(buffer, 0, buffer.Length);
-
-            if (!s.SendToAsync(sendArgs))
-            {
-                ProcessSent(sendArgs);
-            }
-        }
-
-        /// <summary>
         /// 开始接收数据
         /// </summary>
         /// <param name="remoteEP"></param>
@@ -387,7 +321,9 @@ namespace Bouyei.NetProviderFactory.Udp
             try
             {
                 sendPool.Set(e);
-               
+
+                isConnected = e.SocketError == SocketError.Success;
+
                 if (SentCallbackHandler != null)
                 {
                     SocketToken sToken = new SocketToken()

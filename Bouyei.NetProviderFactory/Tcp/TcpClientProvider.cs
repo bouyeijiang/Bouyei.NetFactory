@@ -454,7 +454,10 @@ namespace Bouyei.NetProviderFactory.Tcp
             if (e.ConnectSocket != null)
             {
                 if (e.ConnectSocket.Connected)
+                {
                     e.ConnectSocket.Shutdown(SocketShutdown.Both);
+                    e.ConnectSocket.Disconnect(true);
+                }
                 e.ConnectSocket.Close();
                 e.ConnectSocket.Dispose();
             }

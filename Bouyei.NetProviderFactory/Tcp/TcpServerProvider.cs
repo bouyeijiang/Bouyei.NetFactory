@@ -347,12 +347,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 if (stoped)
                 {
-                    if (e.ConnectSocket != null)
-                    {
-                        e.ConnectSocket.Close();
-                        e.ConnectSocket.Dispose();
-                        e.Dispose();
-                    }
+                    Close(e);
                     return;
                 }
 
@@ -360,6 +355,8 @@ namespace Bouyei.NetProviderFactory.Tcp
                 SocketAsyncEventArgs tArgs = acceptPool.Get();
                 if (maxNumber == numberOfConnections || tArgs == null)
                 {
+                    Close(e);
+
                     throw new Exception("已经达到最大连接数");
                 }
 
@@ -525,6 +522,16 @@ namespace Bouyei.NetProviderFactory.Tcp
             catch (Exception ex)
             {
                 throw ex;
+            }
+        }
+
+        private void Close(SocketAsyncEventArgs e)
+        {
+            if (e.ConnectSocket != null)
+            {
+                e.ConnectSocket.Shutdown(SocketShutdown.Both);
+                e.ConnectSocket.Disconnect(true);
+                e.ConnectSocket.Close();
             }
         }
 
