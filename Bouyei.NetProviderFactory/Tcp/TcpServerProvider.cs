@@ -399,9 +399,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 if (stoped)
                 {
-                    if (e.ConnectSocket != null) e.ConnectSocket.Close();
-                    if (e.AcceptSocket != null) e.AcceptSocket.Close();
-                    acceptPool.Set(e);
+                    Close(e);
                     return;
                 }
 
@@ -532,6 +530,12 @@ namespace Bouyei.NetProviderFactory.Tcp
                 e.ConnectSocket.Shutdown(SocketShutdown.Both);
                 e.ConnectSocket.Disconnect(true);
                 e.ConnectSocket.Close();
+            }
+            if (e.AcceptSocket != null)
+            {
+                e.AcceptSocket.Shutdown(SocketShutdown.Both);
+                e.AcceptSocket.Disconnect(true);
+                e.AcceptSocket.Close();
             }
         }
 

@@ -4,11 +4,14 @@ using System.Net.Sockets;
 
 namespace Bouyei.NetProviderFactory.Udp
 {
-    internal class SocketReceive:IDisposable
+    internal class SocketReceive : IDisposable
     {
+        #region variable
         private Socket receiveSocket = null;
-        private SocketTokenManager<SocketAsyncEventArgs> receivePool = null;
-        private SocketBufferManager receiveBufferPool = null;
+        //private SocketTokenManager<SocketAsyncEventArgs> receivePool = null;
+        //private SocketBufferManager receiveBufferPool = null;
+        private SocketAsyncEventArgs socketArgs = null;
+        private byte[] recBuffer = null;
         private bool isClose = false;
         private bool _isDisposed = false;
 
@@ -17,6 +20,9 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         public event EventHandler<SocketAsyncEventArgs> OnReceived;
 
+        #endregion
+
+        #region structure
         /// <summary>
         /// 构造方法
         /// </summary>
@@ -24,32 +30,18 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="bufferSize">接收缓冲区大小</param>
         public SocketReceive(int port)
         {
-            receiveSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, port);
+            receiveSocket = new Socket(localEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            receiveSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
+
             receiveSocket.Bind(localEndPoint);
         }
- 
+
 
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
-        }
-
-        private void DisposeSocketPool()
-        {
-            if (receivePool != null)
-            {
-                while (receivePool.Count > 0)
-                {
-                    var item = receivePool.Get();
-                    if (item != null) item.Dispose();
-                }
-            }
-            if (receiveBufferPool != null)
-            {
-                receiveBufferPool.Clear();
-            }
         }
 
         protected virtual void Dispose(bool isDisposing)
@@ -60,25 +52,35 @@ namespace Bouyei.NetProviderFactory.Udp
             {
                 isClose = true;
                 receiveSocket.Dispose();
+                socketArgs.Dispose();
                 DisposeSocketPool();
                 _isDisposed = true;
             }
         }
+        #endregion
 
-        public void Initialize(int maxNumberOfConnections, int bufferSize = 2048)
+        #region public
+        public void Initialize(int maxNumberOfConnections, int bufferSize = 4096)
         {
-            receiveBufferPool = new SocketBufferManager(maxNumberOfConnections, bufferSize);
-            receivePool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
+            //receiveBufferPool = new SocketBufferManager(maxNumberOfConnections, bufferSize);
+            //receivePool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
+            socketArgs = new SocketAsyncEventArgs();
 
-            for (int i = 0; i < maxNumberOfConnections; ++i)
-            {
-                SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs();
-                socketArgs.UserToken = receiveSocket;
-                socketArgs.RemoteEndPoint = receiveSocket.LocalEndPoint;
-                socketArgs.Completed += SocketArgs_Completed;
-                receiveBufferPool.SetBuffer(socketArgs);
-                receivePool.Set(socketArgs);
-            }
+            socketArgs.UserToken = receiveSocket;
+            socketArgs.RemoteEndPoint = receiveSocket.LocalEndPoint;
+            socketArgs.Completed += SocketArgs_Completed;
+            recBuffer = new byte[bufferSize];
+            socketArgs.SetBuffer(recBuffer, 0, bufferSize);
+
+            //for (int i = 0; i < maxNumberOfConnections; ++i)
+            //{
+            //    SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs();
+            //    socketArgs.UserToken = receiveSocket;
+            //    socketArgs.RemoteEndPoint = receiveSocket.LocalEndPoint;
+            //    socketArgs.Completed += SocketArgs_Completed;
+            //    receiveBufferPool.SetBuffer(socketArgs);
+            //    receivePool.Set(socketArgs);
+            //}
         }
 
         /// <summary>
@@ -86,14 +88,20 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         public void StartReceive()
         {
-            SocketAsyncEventArgs arg = receivePool.Get();
-            Socket s = arg.UserToken as Socket;
-            isClose = false;
-
-            if (!s.ReceiveFromAsync(arg))
+            bool rt = receiveSocket.ReceiveFromAsync(socketArgs);
+            if (rt == false)
             {
-                ProcessReceive(arg);
+                ProcessReceive(socketArgs);
             }
+
+            //SocketAsyncEventArgs arg = receivePool.Get();
+            //Socket s = arg.UserToken as Socket;
+            //isClose = false;
+
+            //if (!s.ReceiveFromAsync(arg))
+            //{
+            //    ProcessReceive(arg);
+            //}
         }
 
         /// <summary>
@@ -107,6 +115,24 @@ namespace Bouyei.NetProviderFactory.Udp
                 receiveSocket.Shutdown(SocketShutdown.Both);
                 receiveSocket.Close();
             }
+        }
+        #endregion
+
+        #region private
+        private void DisposeSocketPool()
+        {
+            //if (receivePool != null)
+            //{
+            //    while (receivePool.Count > 0)
+            //    {
+            //        var item = receivePool.Get();
+            //        if (item != null) item.Dispose();
+            //    }
+            //}
+            //if (receiveBufferPool != null)
+            //{
+            //    receiveBufferPool.Clear();
+            //}
         }
 
         /// <summary>
@@ -129,23 +155,25 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <summary>
         /// 处理接收信息
         /// </summary>
-        /// <param name="args"></param>
-        private void ProcessReceive(SocketAsyncEventArgs args)
+        /// <param name="arg"></param>
+        private void ProcessReceive(SocketAsyncEventArgs arg)
         {
-            receivePool.Set(args);
-            
-            if (args.BytesTransferred > 0 
-                && args.SocketError == SocketError.Success)
+            // receivePool.Set(args);
+
+            if (arg.BytesTransferred > 0
+                && arg.SocketError == SocketError.Success)
             {
                 if (OnReceived != null)
                 {
-                    OnReceived(args.UserToken as Socket, args);
+                    OnReceived(arg.UserToken as Socket, arg);
                 }
             }
-            
+
             if (isClose) return;
 
             StartReceive();
         }
+
+        #endregion
     }
 }

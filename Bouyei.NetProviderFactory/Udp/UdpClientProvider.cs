@@ -6,7 +6,7 @@ using System.Collections.Generic;
 
 namespace Bouyei.NetProviderFactory.Udp
 {
-    public class UdpClientProvider:IDisposable
+    public class UdpClientProvider : IDisposable
     {
         #region 定义变量
         private bool _isDisposed = false;
@@ -20,7 +20,7 @@ namespace Bouyei.NetProviderFactory.Udp
         private SocketBufferManager sendBuffer = null;
 
         private Socket clientSocket = null;
-        
+
         #endregion
 
         #region 属性
@@ -41,6 +41,7 @@ namespace Bouyei.NetProviderFactory.Udp
         public OnReceiveOffsetHandler ReceiveOffsetHandler { get; set; }
         #endregion
 
+        #region public method
         public void Dispose()
         {
             Dispose(true);
@@ -84,7 +85,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <summary>
         /// 构造方法
         /// </summary>
-        public UdpClientProvider(int bufferSizeByConnection,int maxNumberOfConnections)
+        public UdpClientProvider(int bufferSizeByConnection, int maxNumberOfConnections)
         {
             this.maxNumberOfConnections = maxNumberOfConnections;
             this.bufferSizeByConnection = bufferSizeByConnection;
@@ -94,33 +95,8 @@ namespace Bouyei.NetProviderFactory.Udp
 
         public void Disconnect()
         {
+            Close();
             isConnected = false;
-            if (clientSocket != null)
-            {
-                clientSocket.Close();
-            }
-        }
-
-        /// <summary>
-        /// 初始化对象
-        /// </summary>
-        /// <param name="recBufferSize"></param>
-        /// <param name="port"></param>
-        private void Initialize()
-        {
-            sendPool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
-            sendBuffer = new SocketBufferManager(maxNumberOfConnections, bufferSizeByConnection);
-            clientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-
-            //初始化发送接收对象池
-            for (int i = 0; i < maxNumberOfConnections; ++i)
-            {
-                SocketAsyncEventArgs sendArgs = new SocketAsyncEventArgs();
-                sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-                sendArgs.UserToken = clientSocket;
-                sendBuffer.SetBuffer(sendArgs);
-                sendPool.Set(sendArgs);
-            }
         }
 
         /// <summary>
@@ -131,18 +107,23 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <returns></returns>
         public bool Connect(int port, string ip)
         {
+            Close();
+
             serverIpEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
+            clientSocket = new Socket(serverIpEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            clientSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
+
             int retry = 3;
             again:
             try
-            {               
+            {
                 //探测是否有效连接
                 SocketAsyncEventArgs sArgs = new SocketAsyncEventArgs();
                 sArgs.Completed += IO_Completed;
                 sArgs.UserToken = clientSocket;
                 sArgs.RemoteEndPoint = serverIpEndPoint;
                 sArgs.SetBuffer(new byte[] { 0 }, 0, 1);
- 
+
                 bool rt = clientSocket.SendToAsync(sArgs);
                 if (rt)
                 {
@@ -170,7 +151,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="offset"></param>
         /// <param name="size"></param>
         /// <param name="waitingSignal"></param>
-        public void Send(byte[] buffer,int offset,int size,bool waitingSignal=true)
+        public void Send(byte[] buffer, int offset, int size, bool waitingSignal = true)
         {
             SocketAsyncEventArgs sendArgs = sendPool.Get();
             if (sendArgs == null)
@@ -187,13 +168,12 @@ namespace Bouyei.NetProviderFactory.Udp
 
             sendArgs.RemoteEndPoint = serverIpEndPoint;
 
-            if (!sendBuffer.WriteBuffer(sendArgs,buffer,offset,size))
+            if (!sendBuffer.WriteBuffer(sendArgs, buffer, offset, size))
             {
                 sendArgs.SetBuffer(buffer, offset, size);
             }
-            Socket s = sendArgs.UserToken as Socket;
 
-            if (!s.SendToAsync(sendArgs))
+            if (!clientSocket.SendToAsync(sendArgs))
             {
                 ProcessSent(sendArgs);
             }
@@ -234,7 +214,7 @@ namespace Bouyei.NetProviderFactory.Udp
             byte[] buffer = new byte[recBufferSize];
             do
             {
-                cnt = clientSocket.ReceiveFrom(buffer, 
+                cnt = clientSocket.ReceiveFrom(buffer,
                     buffer.Length,
                     SocketFlags.None,
                     ref serverIpEndPoint);
@@ -262,6 +242,40 @@ namespace Bouyei.NetProviderFactory.Udp
             }
         }
 
+        #endregion
+
+        #region private method
+        /// <summary>
+        /// 初始化对象
+        /// </summary>
+        /// <param name="recBufferSize"></param>
+        /// <param name="port"></param>
+        private void Initialize()
+        {
+            sendPool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
+            sendBuffer = new SocketBufferManager(maxNumberOfConnections, bufferSizeByConnection);
+
+            //初始化发送接收对象池
+            for (int i = 0; i < maxNumberOfConnections; ++i)
+            {
+                SocketAsyncEventArgs sendArgs = new SocketAsyncEventArgs();
+                sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                sendArgs.UserToken = clientSocket;
+                sendBuffer.SetBuffer(sendArgs);
+                sendPool.Set(sendArgs);
+            }
+        }
+
+        private void Close()
+        {
+            if (clientSocket != null)
+            {
+                clientSocket.Shutdown(SocketShutdown.Both);
+                clientSocket.Close();
+                clientSocket.Dispose();
+            }
+        }
+
         private void ProcessReceive(SocketAsyncEventArgs e)
         {
             SocketToken sToken = new SocketToken()
@@ -275,7 +289,7 @@ namespace Bouyei.NetProviderFactory.Udp
                 if (e.SocketError == SocketError.Success && e.BytesTransferred > 0)
                 {
                     //初次连接心跳
-                    if (isRetryConnect(e) == false)
+                    if (isServerResponse(e) == false)
                     {
                         //缓冲区偏移量返回
                         if (ReceiveOffsetHandler != null)
@@ -310,7 +324,7 @@ namespace Bouyei.NetProviderFactory.Udp
                     //继续下一个接收
                     if (!sToken.TokenSocket.ReceiveFromAsync(e))
                     {
-                          ProcessReceive(e);
+                        ProcessReceive(e);
                     }
                 }
             }
@@ -324,7 +338,7 @@ namespace Bouyei.NetProviderFactory.Udp
 
                 isConnected = e.SocketError == SocketError.Success;
 
-                if (SentCallbackHandler != null)
+                if (SentCallbackHandler != null && isClientRequest(e)==false)
                 {
                     SocketToken sToken = new SocketToken()
                     {
@@ -353,7 +367,7 @@ namespace Bouyei.NetProviderFactory.Udp
             }
         }
 
-        private bool isRetryConnect(SocketAsyncEventArgs e)
+        private bool isServerResponse(SocketAsyncEventArgs e)
         {
             isConnected = e.SocketError == SocketError.Success;
 
@@ -364,5 +378,15 @@ namespace Bouyei.NetProviderFactory.Udp
             }
             else return false;
         }
+
+        private bool isClientRequest(SocketAsyncEventArgs e)
+        {
+            if (e.BytesTransferred == 1 && e.Buffer[0] == 0)
+            {
+                return true;
+            }
+            else return false;
+        }
+        #endregion
     }
 }

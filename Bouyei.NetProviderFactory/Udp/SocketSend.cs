@@ -5,14 +5,19 @@ using System.Threading;
 
 namespace Bouyei.NetProviderFactory.Udp
 {
-    internal class SocketSend:IDisposable
+    internal class SocketSend : IDisposable
     {
+        #region variable
         private int maxCount = 0;
         private int blocksize = 0;
         private SocketTokenManager<SocketAsyncEventArgs> tokenPool = null;
         private SocketBufferManager sentBufferPool = null;
-        private Socket sendSocket = null;
+        private Socket sentSocket = null;
         private bool _isDisposed = false;
+
+        #endregion
+
+        #region structure
         /// <summary>
         /// 发送事件回调
         /// </summary>
@@ -31,33 +36,28 @@ namespace Bouyei.NetProviderFactory.Udp
             if (isDisposing)
             {
                 DisposeSocketPool();
-                sendSocket.Dispose();
+                sentSocket.Dispose();
                 sentBufferPool.Clear();
                 _isDisposed = true;
             }
         }
+        #endregion
 
-        private void DisposeSocketPool()
-        {
-            while (tokenPool.Count > 0)
-            {
-                var item = tokenPool.Get();
-                if (item != null) item.Dispose();
-            }
-        }
-
+        #region public method 
         /// <summary>
         /// 初始化发送对象
         /// </summary>
         /// <param name="maxCountClient">客户端最大数</param>
         public SocketSend()
         {
-            sendSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            sentSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         }
 
         /// <summary>
         /// 初始化客户端发送对象池
         /// </summary>
+        /// <param name="maxCountClient"></param>
+        /// <param name="blockSize"></param>
         public void Initialize(int maxCountClient, int blockSize = 4096)
         {
             this.maxCount = maxCountClient;
@@ -68,7 +68,7 @@ namespace Bouyei.NetProviderFactory.Udp
             for (int i = 0; i < maxCount; ++i)
             {
                 SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs();
-                socketArgs.UserToken =sendSocket;
+                socketArgs.UserToken = sentSocket;
                 socketArgs.Completed += new EventHandler<SocketAsyncEventArgs>(ClientSocket_Completed);
                 sentBufferPool.SetBuffer(socketArgs);
                 tokenPool.Set(socketArgs);
@@ -79,8 +79,11 @@ namespace Bouyei.NetProviderFactory.Udp
         /// 发送数据
         /// </summary>
         /// <param name="data"></param>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        /// <param name="waitingSignal"></param>
         /// <param name="remoteEP"></param>
-        public void Send(byte[] data,int offset,int size,bool waitingSignal,IPEndPoint remoteEP)
+        public void Send(byte[] data, int offset, int size, bool waitingSignal, IPEndPoint remoteEP)
         {
             SocketAsyncEventArgs socketArgs = null;
             try
@@ -100,9 +103,10 @@ namespace Bouyei.NetProviderFactory.Udp
                     throw new Exception("发送缓冲池已用完,等待回收...");
 
                 socketArgs.RemoteEndPoint = remoteEP;
-                Socket s = socketArgs.UserToken as Socket;
+                Socket s = SocketVersion(remoteEP);
+                socketArgs.UserToken = s;
 
-                if(!sentBufferPool.WriteBuffer(socketArgs,data,offset,size))
+                if (!sentBufferPool.WriteBuffer(socketArgs, data, offset, size))
                 {
                     socketArgs.SetBuffer(data, offset, size);
                 }
@@ -117,8 +121,6 @@ namespace Bouyei.NetProviderFactory.Udp
             }
             catch (Exception ex)
             {
-                tokenPool.Set(socketArgs);
-                
                 throw ex;
             }
         }
@@ -133,7 +135,40 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <returns></returns>
         public int SendSync(byte[] data, int offset, int size, IPEndPoint remoteEP)
         {
-            return sendSocket.SendTo(data, offset, size, SocketFlags.None, remoteEP);
+            return SocketVersion(remoteEP).SendTo(data, offset, size, SocketFlags.None, remoteEP);
+        }
+
+        #endregion
+
+        #region private method
+        /// <summary>
+        /// 释放缓冲池
+        /// </summary>
+        private void DisposeSocketPool()
+        {
+            while (tokenPool.Count > 0)
+            {
+                var item = tokenPool.Get();
+                if (item != null) item.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// 获取socket版本
+        /// </summary>
+        /// <param name="ips"></param>
+        /// <returns></returns>
+        private Socket SocketVersion(IPEndPoint ips)
+        {
+            if (ips.AddressFamily == sentSocket.AddressFamily)
+            {
+                return sentSocket;
+            }
+            else
+            {
+                sentSocket = new Socket(ips.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            }
+            return sentSocket;
         }
 
         /// <summary>
@@ -169,5 +204,6 @@ namespace Bouyei.NetProviderFactory.Udp
                     break;
             }
         }
+        #endregion
     }
 }

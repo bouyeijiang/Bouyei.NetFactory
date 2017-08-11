@@ -4,11 +4,11 @@ using System.Net.Sockets;
 
 namespace Bouyei.NetProviderFactory.Udp
 {
-    public class UdpServerProvider:IDisposable
+    public class UdpServerProvider : IDisposable
     {
         #region 变量定义
-        private SocketReceive socketRecieve=null;
-        private SocketSend socketSend=null;
+        private SocketReceive socketRecieve = null;
+        private SocketSend socketSend = null;
         private bool _isDisposed = false;
 
         #endregion
@@ -34,6 +34,7 @@ namespace Bouyei.NetProviderFactory.Udp
 
         #endregion
 
+        #region structure
         public void Dispose()
         {
             Dispose(true);
@@ -72,14 +73,16 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             socketSend = new SocketSend();
             socketSend.SentEventHandler += new EventHandler<SocketAsyncEventArgs>(sendSocket_SentEventHandler);
-            socketSend.Initialize(maxConnectionCount,recBufferSize);
+            socketSend.Initialize(maxConnectionCount, recBufferSize);
 
             socketRecieve = new SocketReceive(port);
             socketRecieve.Initialize(maxConnectionCount, recBufferSize);
             socketRecieve.OnReceived += new EventHandler<SocketAsyncEventArgs>(receiveSocket_OnReceived);
             socketRecieve.StartReceive();
         }
+        #endregion
 
+        #region public method
         /// <summary>
         /// 停止服务
         /// </summary>
@@ -100,9 +103,9 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         /// <param name="data"></param>
         /// <param name="remoteEP"></param>
-        public void Send(IPEndPoint remoteEP, byte[] data,int offset,int size,bool waitingSignal=true)
+        public void Send(IPEndPoint remoteEP, byte[] data, int offset, int size, bool waitingSignal = true)
         {
-            socketSend.Send(data,offset,size, waitingSignal,remoteEP);
+            socketSend.Send(data, offset, size, waitingSignal, remoteEP);
         }
 
         /// <summary>
@@ -111,21 +114,23 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="data"></param>
         /// <param name="ip"></param>
         /// <param name="port"></param>
-        public void Send( string ip, int port,byte[] data,int offset,int size,bool waitingSignal=true)
+        public void Send(string ip, int port, byte[] data, int offset, int size, bool waitingSignal = true)
         {
             IPEndPoint ep = new IPEndPoint(IPAddress.Parse(ip), port);
 
-            socketSend.Send(data, offset, size, waitingSignal,ep);
+            socketSend.Send(data, offset, size, waitingSignal, ep);
         }
 
-        public int SendSync(byte[] data,int offset,int size,IPEndPoint remoteEP)
+        public int SendSync(byte[] data, int offset, int size, IPEndPoint remoteEP)
         {
-          return  socketSend.SendSync(data, offset, size, remoteEP);
+            return socketSend.SendSync(data, offset, size, remoteEP);
         }
+        #endregion
 
-        void sendSocket_SentEventHandler(object sender, SocketAsyncEventArgs e)
+        #region private method
+        private void sendSocket_SentEventHandler(object sender, SocketAsyncEventArgs e)
         {
-            if (SentCallbackHandler != null)
+            if (SentCallbackHandler != null && isServerResponse(e)==false)
             {
                 SentCallbackHandler(new SocketToken()
                 {
@@ -134,13 +139,13 @@ namespace Bouyei.NetProviderFactory.Udp
             }
         }
 
-        void receiveSocket_OnReceived(object sender, SocketAsyncEventArgs e)
+        private void receiveSocket_OnReceived(object sender, SocketAsyncEventArgs e)
         {
-            if (isRetryConnect(e)) return;
+            if (isClientRequest(e)) return;
 
             SocketToken sToken = new SocketToken()
             {
-                 TokenIpEndPoint=(IPEndPoint)e.RemoteEndPoint
+                TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint
             };
 
             if (ReceiveOffsetHanlder != null)
@@ -164,7 +169,7 @@ namespace Bouyei.NetProviderFactory.Udp
             }
         }
 
-        private bool isRetryConnect(SocketAsyncEventArgs e)
+        private bool isClientRequest(SocketAsyncEventArgs e)
         {
             if (e.BytesTransferred == 1 && e.Buffer[0] == 0)
             {
@@ -175,5 +180,16 @@ namespace Bouyei.NetProviderFactory.Udp
             }
             else return false;
         }
+
+        private bool isServerResponse(SocketAsyncEventArgs e)
+        {
+            if (e.BytesTransferred == 1 && e.Buffer[0] == 1)
+            {
+                return true;
+            }
+            else return false;
+        }
+
+        #endregion
     }
 }
