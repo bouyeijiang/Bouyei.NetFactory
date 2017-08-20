@@ -13,7 +13,7 @@ namespace Bouyei.NetProviderFactoryDemo
         static void Main(string[] args)
         {
             UdpDemo();
-            // TcpDemo();
+            TcpDemo();
         }
 
         private static void TcpDemo()
@@ -42,7 +42,7 @@ namespace Bouyei.NetProviderFactoryDemo
                     Console.WriteLine(ex.ToString());
                 }
             });
-            serverSocket.SentHanlder = new OnSentHandler((stoken, count) =>
+            serverSocket.SentHanlder = new OnSentHandler((stoken,buff, offset,count) =>
             {
                 svc_send_cnt += 1;
             });
@@ -58,7 +58,7 @@ namespace Bouyei.NetProviderFactoryDemo
 
                 //客户端
                 NetClientProvider clientSocket = NetClientProvider.CreateNetClientProvider();
-                clientSocket.SentHanlder = new OnSentHandler((stoken, cont) =>
+                clientSocket.SentHanlder = new OnSentHandler((stoken, buff,offset,cont) =>
                 {
                     client_send_cnt += 1;
                 });
@@ -75,18 +75,16 @@ namespace Bouyei.NetProviderFactoryDemo
                 bool rt = clientSocket.ConnectTo(port, "127.0.0.1");
                 if (rt)
                 {
-                    int f = 0;
                     for (int i = 0; i < 100000; i++)
                     {
-                        ++f;
-                        if (f > 0 && f % 100 == 0)
+                        if (i% 100 == 0)
                         {
-                            Console.WriteLine(clientSocket.SendBufferNumber + ":" + f);
+                            Console.WriteLine(clientSocket.SendBufferNumber + ":" + i);
                             Console.WriteLine(string.Format("svc[send:{0},rec:{1}],client[send{2},rec:{3}]", svc_send_cnt, svc_rec_cnt, client_send_cnt, client_rec_cnt));
                         }
                         clientSocket.Send(sendbuffer);
                     }
-                    Console.WriteLine("complete" + f);
+                    Console.WriteLine("complete");
                     clientSocket.Dispose();
                 }
             }
@@ -116,7 +114,7 @@ namespace Bouyei.NetProviderFactoryDemo
                 }
                 
                 clientProvider = NetClientProvider.CreateNetClientProvider(4096, 4, NetProviderType.Udp);
-                clientProvider.SentHanlder = new OnSentHandler((sToken, count) =>
+                clientProvider.SentHanlder = new OnSentHandler((sToken,buff,offset, count) =>
                 {
                     ++sentcnt;
                   //  mER.Set();

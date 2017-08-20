@@ -461,12 +461,12 @@ namespace Bouyei.NetProviderFactory.Tcp
                 //用完的对象放回对象池
                 sendPool.Set(e);
                 SocketToken sToken = e.UserToken as SocketToken;
-
+          
                 if (e.SocketError == SocketError.Success)
                 {
                     //事件回调传递
                     if (SentCallback != null)
-                        SentCallback(sToken, e.BytesTransferred);
+                        SentCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);
                 }
                 else
                 {

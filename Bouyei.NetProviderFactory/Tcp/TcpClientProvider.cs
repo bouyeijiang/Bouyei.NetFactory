@@ -520,7 +520,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 if (e.SocketError == SocketError.Success)
                 {
                     if (SentCallback != null)
-                        SentCallback(sToken, e.BytesTransferred);
+                        SentCallback(sToken, e.Buffer,e.Offset,e.BytesTransferred);
                 }
                 else
                 {

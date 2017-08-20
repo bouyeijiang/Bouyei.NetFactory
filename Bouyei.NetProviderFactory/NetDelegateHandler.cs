@@ -23,7 +23,7 @@ namespace Bouyei.NetProviderFactory
     /// </summary>
     /// <param name="sToken"></param>
     /// <param name="bytesTransferred"></param>
-    public delegate void OnSentHandler(SocketToken sToken, int bytesTransferred);
+    public delegate void OnSentHandler(SocketToken sToken, byte[] buffer, int offset, int count);
     
     /// <summary>
     /// 接受连接对象处理

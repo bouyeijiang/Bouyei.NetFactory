@@ -41,13 +41,18 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="INetClientProvider.cs" />
+    <Compile Include="INetProtocolProvider.cs" />
     <Compile Include="INetServerProvider.cs" />
     <Compile Include="NetClientProvider.cs" />
     <Compile Include="NetDelegateHandler.cs" />
+    <Compile Include="NetProtocolProvider.cs" />
     <Compile Include="NetServerProvider.cs" />
     <Compile Include="Pools\SocketBufferManager.cs" />
     <Compile Include="Pools\SocketTokenManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Protocols\Package.cs" />
+    <Compile Include="Protocols\PackageAttribute.cs" />
+    <Compile Include="Protocols\PackageHeader.cs" />
     <Compile Include="SocketEnum.cs" />
     <Compile Include="SocketToken.cs" />
     <Compile Include="Tcp\TcpClientProvider.cs" />

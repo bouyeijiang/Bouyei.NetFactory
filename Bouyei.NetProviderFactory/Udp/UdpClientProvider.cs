@@ -345,7 +345,7 @@ namespace Bouyei.NetProviderFactory.Udp
                         TokenSocket = e.UserToken as Socket,
                         TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint
                     };
-                    SentCallbackHandler(sToken, e.BytesTransferred);
+                    SentCallbackHandler(sToken, e.Buffer,e.Offset,e.BytesTransferred);
                 }
             }
             catch (Exception ex)

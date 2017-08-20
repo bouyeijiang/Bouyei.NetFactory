@@ -135,7 +135,7 @@ namespace Bouyei.NetProviderFactory.Udp
                 SentCallbackHandler(new SocketToken()
                 {
                     TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint
-                }, e.BytesTransferred);
+                }, e.Buffer,e.Offset,e.BytesTransferred);
             }
         }
 
