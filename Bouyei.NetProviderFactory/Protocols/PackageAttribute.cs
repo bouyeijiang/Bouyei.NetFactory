@@ -8,8 +8,13 @@ namespace Bouyei.NetProviderFactory.Protocols
 {
     public class PackageAttribute
     {
-        public byte paCryptFlag { get; set; }
-
+        /// <summary>
+        /// 数据内容包总数
+        /// </summary>
+        public UInt16 packageCount { get; set; } = 1;
+        /// <summary>
+        /// 数据内容长度
+        /// </summary>
         public UInt32 payloadLength { get; set; }
     }
 }

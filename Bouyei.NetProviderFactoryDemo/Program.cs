@@ -8,10 +8,14 @@ using System.Threading;
 namespace Bouyei.NetProviderFactoryDemo
 {
     using NetProviderFactory;
+    using NetProviderFactory.Protocols;
+
     class Program
     {
         static void Main(string[] args)
         {
+            ProtocolsDemo();
+
             UdpDemo();
             TcpDemo();
         }
@@ -154,6 +158,31 @@ namespace Bouyei.NetProviderFactoryDemo
             Console.ReadKey();
             serverProvider.Dispose();
             clientProvider.Dispose();
+        }
+
+        private static void ProtocolsDemo()
+        {
+            INetProtocolProvider protocolProvider = NetProtocolProvider.CreateNetProtocolProvider();
+
+            //数据内容打包成字节
+            byte[] content = new byte[] { 1, 3, 4, 0x07, 0x01, 0x07 };
+            byte[] buffer= protocolProvider.Encode(new Package()
+            {
+                pHeader = new PackageHeader()
+                {
+                    packageAttribute = new PackageAttribute()
+                    {
+                        packageCount = 1,//自定义,指定该消息需要分多少个数据包发送才完成
+                        payloadLength = (UInt32)content.Length//数据载体长度
+                    },
+                    packageFlag = 0x07,//根据业务自定义
+                    packageId = 0x10//根据业务自定义
+                },
+                pPayload = content//携带的数据内容
+            });
+
+            //解析数据包成结构信息
+            var dePkg = protocolProvider.Decode(buffer, 0, buffer.Length);
         }
     }
 }

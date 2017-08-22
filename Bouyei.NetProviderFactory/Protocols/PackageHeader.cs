@@ -8,10 +8,21 @@ namespace Bouyei.NetProviderFactory.Protocols
 {
     public class PackageHeader
     {
-        public byte packageFlag { get;private set; } = 0xff;
-
+        /// <summary>
+        /// 包标志位
+        /// </summary>
+        public byte packageFlag { get; set; } = 0xff;
+        /// <summary>
+        /// 包类型标识(自定义类型值)
+        /// </summary>
         public UInt16 packageId { get; set; }
-
+        /// <summary>
+        /// 包类型(扩展保留)
+        /// </summary>
+        public byte packageType { get; set; }
+        /// <summary>
+        /// 包属性
+        /// </summary>
         public PackageAttribute packageAttribute { get; set; }
 
     }

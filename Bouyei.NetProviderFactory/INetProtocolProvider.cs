@@ -6,7 +6,13 @@ using System.Threading.Tasks;
 
 namespace Bouyei.NetProviderFactory
 {
+    using Protocols;
+
    public interface INetProtocolProvider
     {
+        Package Decode(byte[] buffer, int offset, int size);
+
+        byte[] Encode(Package pkg);
+
     }
 }
