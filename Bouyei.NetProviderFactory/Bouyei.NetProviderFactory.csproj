@@ -53,9 +53,11 @@
     <Compile Include="Pools\SocketTokenManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Protocols\ByteConvert.cs" />
+    <Compile Include="Protocols\CycQueue.cs" />
     <Compile Include="Protocols\Package.cs" />
     <Compile Include="Protocols\PackageAttribute.cs" />
     <Compile Include="Protocols\PackageHeader.cs" />
+    <Compile Include="Protocols\PackageQueue.cs" />
     <Compile Include="SocketEnum.cs" />
     <Compile Include="SocketToken.cs" />
     <Compile Include="Tcp\TcpClientProvider.cs" />

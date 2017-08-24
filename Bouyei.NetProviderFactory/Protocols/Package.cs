@@ -8,6 +8,7 @@ namespace Bouyei.NetProviderFactory.Protocols
 {
     public class Package
     {
+        #region variable
         /// <summary>
         /// 报头信息
         /// </summary>
@@ -17,6 +18,13 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// </summary>
         public byte[] pPayload { get; set; }
 
+        #endregion
+
+        #region method
+        /// <summary>
+        /// 编码
+        /// </summary>
+        /// <returns></returns>
         internal byte[] EncodeToBytes()
         {
             int plen = pPayload.Length;
@@ -40,6 +48,13 @@ namespace Bouyei.NetProviderFactory.Protocols
             return Escape(buffer, pHeader.packageFlag);
         }
 
+        /// <summary>
+        /// 解码
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
         internal bool DeocdeFromBytes(byte[] buffer, int offset, int size)
         {
             byte[] dst = Restore(buffer, offset, size);
@@ -74,35 +89,36 @@ namespace Bouyei.NetProviderFactory.Protocols
             int flagCnt = CheckEscapeFlagBitCount(buffer, flag);
             if (flagCnt == 0) return buffer;
 
-            int i = 1, j = 1;
-            int blen = buffer.Length - 2;
-            int len = buffer.Length;
+            int plen = buffer.Length - 2;
 
             byte[] rBuffer = new byte[buffer.Length + flagCnt];
-            fixed (byte* dst = rBuffer, src = buffer)
+            rBuffer[0] = buffer[0];//起始标识位
+
+            fixed (byte* dst = &(rBuffer[1]), src = &(buffer[1]))
             {
-                //起始标识位
-                *(dst+0) = buffer[0];
+                byte* _dst = dst;
+                byte* _src = src;
 
                 //消息头和消息体
-                while (i <=blen)
+                while (plen >= 0)
                 {
-                    if (*(src + i) == flag)
+                    if (*(_src) == flag)
                     {
-                        *(dst + j) = *(src + i);
-                        *(dst + j + 1) = 0x01;
-                        j += 2;
+                        *(_dst) = *(_src);
+                        *(_dst + 1) = 0x01;
+                        _dst += 2;
                     }
                     else
                     {
-                        *(dst + j) = *(src + i);
-                        ++j;
+                        *_dst = *_src;
+                        _dst += 1;
                     }
-                    ++i;
+                    _src += 1;
+                    plen -= 1;
                 }
 
                 //结束标志位
-                *(dst + j) = *(src + i);
+                *_dst = *_src;
 
                 return rBuffer;
             }
@@ -132,33 +148,40 @@ namespace Bouyei.NetProviderFactory.Protocols
             }
             byte[] rBuffer = new byte[size - flagCnt];
 
-            int i = offset + 1, j = 1;
-            int srcLen = size - 2;
+            rBuffer[0] = flag; //标志位
+            int pLen = size - 2;//去掉标志位后的长度
 
-            fixed (byte *dst = rBuffer,src=buffer)
+            fixed (byte* dst = &(rBuffer[1]), src = &(buffer[offset + 1]))
             {
+                byte* _src = src;
+                byte* _dst = dst;
+
                 //开始标志位
-                *(dst+0) = *(src + offset);
+                //*(dst+0) = *(src + offset);
 
                 //消息头和消息体
-                while (i <= srcLen)
+                while (pLen >= 0)
                 {
-                    if (*(src + i) == flag)
+                    if (*(_src) == flag)
                     {
-                        if (i + 1 < srcLen && *(src+i+1)==0x01)
+                        if ((pLen - 1) >= 0
+                            && *(_src + 1) == 0x01)
                         {
-                            *(dst + j) = flag;
-                            i += 2;
-                            ++j;
+                            *(_dst) = flag;
+                            _src += 2;
+                            _dst += 1;
+                            pLen -= 2;
+
                             continue;
                         }
                     }
-                    *(dst + j) = *(src + i);
-                    ++i;
-                    ++j;
+                    *(_dst) = *(_src);
+                    _src += 1;
+                    _dst += 1;
+                    pLen -= 1;
                 }
                 //结束标志位
-                *(dst + j) = *(src + i);
+                *(_dst) = *(_src);
                 return rBuffer;
             }
         }
@@ -169,20 +192,22 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <param name="buffer"></param>
         /// <param name="flag"></param>
         /// <returns></returns>
-        private unsafe int CheckEscapeFlagBitCount(byte[] buffer,byte flag)
+        private unsafe int CheckEscapeFlagBitCount(byte[] buffer, byte flag)
         {
             int len = buffer.Length - 2;//去头尾标识位
-            int i = 1, c = 0;
-            fixed (byte* src = buffer)
+            int c = 0;
+            fixed (byte* src = &(buffer[1]))
             {
-                while (i < len)
+                byte* _src = src;
+                do
                 {
-                    if (*(src + i) == flag)
+                    if (*_src == flag)
                     {
                         ++c;
                     }
-                    ++i;
-                }
+                    _src += 1;
+                    --len;
+                } while (len > 0);
             }
             return c;
         }
@@ -195,27 +220,31 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <param name="offset"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        private unsafe int CheckRestoreFlagBitCount(byte[] buffer, byte flag,int offset, int size)
+        private unsafe int CheckRestoreFlagBitCount(byte[] buffer, byte flag, int offset, int size)
         {
             int len = size - 2;
             int i = offset + 1, c = 0;
-            fixed (byte* src = buffer)
+            fixed (byte* src = &(buffer[offset + 1]))
             {
-                while (i < len)
+                byte* _src = src;
+                do
                 {
-                    if (*(src + i) == flag)
+                    if (*_src == flag)
                     {
-                        if (i + 1 < len && *(src + i + 1) == 0x01)
+                        if ((len - 1) >= 0 && *(_src + 1) == 0x01)
                         {
                             ++c;
-                            i += 2;
+                            _src += 2;
+                            len -= 2;
                             continue;
                         }
                     }
-                    ++i;
-                }
+                    _src += 1;
+                    --len;
+                } while (len > 0);
             }
             return c;
         }
+        #endregion
     }
 }

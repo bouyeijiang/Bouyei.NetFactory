@@ -16,7 +16,7 @@ namespace Bouyei.NetProviderFactoryDemo
         {
             ProtocolsDemo();
 
-            UdpDemo();
+            //UdpDemo();
             TcpDemo();
         }
 
@@ -26,19 +26,38 @@ namespace Bouyei.NetProviderFactoryDemo
             int svc_send_cnt = 0, svc_rec_cnt = 0, client_send_cnt = 0, client_rec_cnt = 0;
             //服务端
             NetServerProvider serverSocket = NetServerProvider.CreateNetServerProvider();
-            byte[] sendbuffer = new byte[4096];
+
+            byte[] sendbuffer = new byte[2048];
             for (int i = 0; i < sendbuffer.Length; ++i)
             {
                 sendbuffer[i] = (byte)(i > 255 ? 255 : i);
             }
 
+            //将数据内容打包成指定格式发送
+            INetProtocolProvider protocolProvider = NetProtocolProvider.CreateNetProtocolProvider();
+           
+
             //已经截取接收到的真实数据
-            serverSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
+            serverSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
             {
                 try
                 {
-                    // Console.WriteLine("complate:from client[" + offset + "cnt:" + count);
-                    serverSocket.Send(sToken, Encoding.UTF8.GetBytes("hi I'm server:" + DateTime.Now));
+                    byte[] buffer = protocolProvider.Encode(new Package()
+                    {
+                        pHeader = new PackageHeader()
+                        {
+                            packageAttribute = new PackageAttribute()
+                            {
+                                packageCount = 1,//自定义,指定该消息需要分多少个数据包发送才完成
+                                payloadLength = (UInt32)sendbuffer.Length//数据载体长度
+                            },
+                            packageFlag = 0x07,//根据业务自定义
+                            packageId = 0x10//根据业务自定义，标志该数据包的类型
+                        },
+                        pPayload = sendbuffer//携带的数据内容
+                    });
+
+                    serverSocket.Send(sToken, buffer);
                     svc_rec_cnt += 1;
                 }
                 catch (Exception ex)
@@ -67,10 +86,19 @@ namespace Bouyei.NetProviderFactoryDemo
                     client_send_cnt += 1;
                 });
                 //异步连接
-                clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
+                clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
                 {
-                    client_rec_cnt += 1;
-                    //Console.WriteLine("client:from server[" + Encoding.UTF8.GetString(buffer, offset, count));
+                    try
+                    {
+                        Package pkg = protocolProvider.Decode(buff, offset, count);
+
+                        if (pkg.pPayload.Length == pkg.pHeader.packageAttribute.payloadLength)
+                            client_rec_cnt += 1;
+                    }
+                    catch(Exception ex)
+                    {
+
+                    }
                 });
                 clientSocket.DisconnectedHanlder = new OnDisconnectedHandler((stoken) =>
                 {
