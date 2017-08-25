@@ -280,9 +280,10 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 if (!sendBufferPool.WriteBuffer(tArgs, buffer, offset, size))
                 {
-                    tArgs.SetBuffer(buffer, offset, size);
-                }
+                    tokenPool.Set(tArgs);
 
+                    throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBufferPool.BlockSize));
+                }
                 if (tArgs.UserToken == null)
                     ((SocketToken)tArgs.UserToken).TokenSocket = clientSocket;
 

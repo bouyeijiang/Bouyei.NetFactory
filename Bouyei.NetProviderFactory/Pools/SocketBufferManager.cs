@@ -9,10 +9,15 @@ namespace Bouyei.NetProviderFactory
     {
         int totalSize;
         int curIndex;
-        int blockSize;
+        int blockSize = 2048;
         int used = 0;
         byte[] buffer;
         Queue<int> freeBufferIndexPool;
+
+        /// <summary>
+        /// 块缓冲区大小
+        /// </summary>
+        public int BlockSize { get { return blockSize; } }
 
         /// <summary>
         /// 缓冲区管理构造
@@ -21,6 +26,8 @@ namespace Bouyei.NetProviderFactory
         /// <param name="blockSize"></param>
         public SocketBufferManager(int maxCounts, int blockSize)
         {
+            if (blockSize < 4) blockSize = 4;
+
             this.blockSize = blockSize;
             this.curIndex = 0;
             totalSize = maxCounts * blockSize;
@@ -85,14 +92,17 @@ namespace Bouyei.NetProviderFactory
             try
             {
                 //超出缓冲区则不写入
-                if (agrs.Offset + data.Length > this.buffer.Length)
+                if (agrs.Offset + cnt > this.buffer.Length)
                 {
                     return false;
                 }
 
+                //超出块缓冲区则不写入
+                if (cnt > blockSize) return false;
+
                 Buffer.BlockCopy(data, offset, this.buffer, agrs.Offset, cnt);
 
-                agrs.SetBuffer(this.buffer, agrs.Offset, data.Length);
+                agrs.SetBuffer(this.buffer, agrs.Offset, cnt);
 
                 return true;
             }

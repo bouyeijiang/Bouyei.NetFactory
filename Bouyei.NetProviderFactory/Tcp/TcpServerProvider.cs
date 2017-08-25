@@ -224,11 +224,12 @@ namespace Bouyei.NetProviderFactory.Tcp
                     throw new Exception("发送缓冲池已用完,等待回收...");
 
                 tArgs.UserToken = sToken;
-                if (!sendBuffer.WriteBuffer(tArgs, buffer,offset,size))
+                if (!sendBuffer.WriteBuffer(tArgs, buffer, offset, size))
                 {
-                    tArgs.SetBuffer(buffer, offset, size);
-                }
+                    sendPool.Set(tArgs);
 
+                    throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBuffer.BlockSize));
+                }
                 if (!sToken.TokenSocket.SendAsync(tArgs))
                 {
                     ProcessSent(tArgs);

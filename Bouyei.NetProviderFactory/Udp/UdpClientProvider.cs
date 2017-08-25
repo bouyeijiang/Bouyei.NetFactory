@@ -153,29 +153,31 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="waitingSignal"></param>
         public void Send(byte[] buffer, int offset, int size, bool waitingSignal = true)
         {
-            SocketAsyncEventArgs sendArgs = sendPool.Get();
-            if (sendArgs == null)
+            SocketAsyncEventArgs tArgs = sendPool.Get();
+            if (tArgs == null)
             {
                 while (waitingSignal)
                 {
                     Thread.Sleep(1000);
-                    sendArgs = sendPool.Get();
-                    if (sendArgs != null) break;
+                    tArgs = sendPool.Get();
+                    if (tArgs != null) break;
                 }
             }
-            if (sendArgs == null)
+            if (tArgs == null)
                 throw new Exception("发送缓冲池已用完,等待回收...");
 
-            sendArgs.RemoteEndPoint = serverIpEndPoint;
+            tArgs.RemoteEndPoint = serverIpEndPoint;
 
-            if (!sendBuffer.WriteBuffer(sendArgs, buffer, offset, size))
+            if (!sendBuffer.WriteBuffer(tArgs, buffer, offset, size))
             {
-                sendArgs.SetBuffer(buffer, offset, size);
+                sendPool.Set(tArgs);
+
+                throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBuffer.BlockSize));
             }
 
-            if (!clientSocket.SendToAsync(sendArgs))
+            if (!clientSocket.SendToAsync(tArgs))
             {
-                ProcessSent(sendArgs);
+                ProcessSent(tArgs);
             }
         }
 

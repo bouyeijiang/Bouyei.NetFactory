@@ -59,6 +59,11 @@ namespace Bouyei.NetProviderFactory.Protocols
         {
             byte[] dst = Restore(buffer, offset, size);
 
+            uint plen= dst.ToUInt32(6);
+
+            if (plen >= size - 11)
+                throw new Exception("content buffer overflow...");
+
             if (pHeader == null)
                 pHeader = new PackageHeader();
 
@@ -70,8 +75,8 @@ namespace Bouyei.NetProviderFactory.Protocols
                 pHeader.packageAttribute = new PackageAttribute();
 
             pHeader.packageAttribute.packageCount = dst.ToUInt16(4);
-            pHeader.packageAttribute.payloadLength = dst.ToUInt32(6);
-
+            pHeader.packageAttribute.payloadLength = plen;// dst.ToUInt32(6);
+         
             pPayload = new byte[pHeader.packageAttribute.payloadLength];
             Buffer.BlockCopy(dst, 10, pPayload, 0, pPayload.Length);
 

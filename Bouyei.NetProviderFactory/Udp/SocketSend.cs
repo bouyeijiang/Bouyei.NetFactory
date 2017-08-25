@@ -85,37 +85,39 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="remoteEP"></param>
         public void Send(byte[] data, int offset, int size, bool waitingSignal, IPEndPoint remoteEP)
         {
-            SocketAsyncEventArgs socketArgs = null;
+            SocketAsyncEventArgs tArgs = null;
             try
             {
-                socketArgs = tokenPool.Get();
+                tArgs = tokenPool.Get();
                 //如果发送对象池已经为空
-                if (socketArgs == null)
+                if (tArgs == null)
                 {
                     while (waitingSignal)
                     {
                         Thread.Sleep(500);
-                        socketArgs = tokenPool.Get();
-                        if (socketArgs != null) break;
+                        tArgs = tokenPool.Get();
+                        if (tArgs != null) break;
                     }
                 }
-                if (socketArgs == null)
+                if (tArgs == null)
                     throw new Exception("发送缓冲池已用完,等待回收...");
 
-                socketArgs.RemoteEndPoint = remoteEP;
+                tArgs.RemoteEndPoint = remoteEP;
                 Socket s = SocketVersion(remoteEP);
-                socketArgs.UserToken = s;
+                tArgs.UserToken = s;
 
-                if (!sentBufferPool.WriteBuffer(socketArgs, data, offset, size))
+                if (!sentBufferPool.WriteBuffer(tArgs, data, offset, size))
                 {
-                    socketArgs.SetBuffer(data, offset, size);
+                    tokenPool.Set(tArgs);
+
+                    throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sentBufferPool.BlockSize));
                 }
 
-                if (socketArgs.RemoteEndPoint != null)
+                if (tArgs.RemoteEndPoint != null)
                 {
-                    if (!s.SendToAsync(socketArgs))
+                    if (!s.SendToAsync(tArgs))
                     {
-                        ProcessSent(socketArgs);
+                        ProcessSent(tArgs);
                     }
                 }
             }
