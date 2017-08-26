@@ -6,24 +6,20 @@ using System.Threading.Tasks;
 
 namespace Bouyei.NetProviderFactory.Protocols
 {
-    public class PackageHeader
+    public class PacketHeader
     {
-        /// <summary>
-        /// 包标志位
-        /// </summary>
-        public byte packageFlag { get; set; } = 0xff;
         /// <summary>
         /// 包类型标识(自定义类型值)
         /// </summary>
-        public UInt16 packageId { get; set; }
+        public UInt16 packetId { get; set; }
         /// <summary>
         /// 包类型(扩展保留)
         /// </summary>
-        public byte packageType { get; set; }
+        public byte packetType { get; set; }
         /// <summary>
         /// 包属性
         /// </summary>
-        public PackageAttribute packageAttribute { get; set; }
+        public PacketAttribute packetAttribute { get; set; }
 
     }
 

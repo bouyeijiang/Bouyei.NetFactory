@@ -6,15 +6,15 @@ using System.Threading.Tasks;
 
 namespace Bouyei.NetProviderFactory.Protocols
 {
-    public class PackageAttribute
+    public class PacketAttribute
     {
         /// <summary>
         /// 数据内容包总数
         /// </summary>
-        public UInt16 packageCount { get; set; } = 1;
+        public UInt16 packetCount { get; set; } = 1;
         /// <summary>
         /// 数据内容长度
         /// </summary>
-        public UInt32 payloadLength { get; set; }
+        public UInt32 payloadLength { get;internal set; }
     }
 }

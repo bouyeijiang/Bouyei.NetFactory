@@ -16,6 +16,14 @@ namespace Bouyei.NetProviderFactory.Protocols
 
         public int Length { get { return length; } }
 
+        public int Capacity { get { return capacity; } }
+
+        public int Tail { get { return tail; } }
+
+        public int Head { get { return head; } }
+
+        public T[] Array { get { return bucket; } }
+
         public CycQueue(int capacity)
         {
             if (capacity < 4) capacity = 4;

@@ -6,13 +6,20 @@ using System.Threading.Tasks;
 
 namespace Bouyei.NetProviderFactory.Protocols
 {
-    public class Package
+    public class Packet
     {
         #region variable
         /// <summary>
+        /// 包标志位
+        /// </summary>
+        public static byte packageFlag { get;private set; } = 0xfe;
+
+        public static byte subFlag { get; private set; } = 0xfd;
+
+        /// <summary>
         /// 报头信息
         /// </summary>
-        public PackageHeader pHeader { get; set; }
+        public PacketHeader pHeader { get; set; }
         /// <summary>
         /// 包携带的数据内容
         /// </summary>
@@ -28,24 +35,24 @@ namespace Bouyei.NetProviderFactory.Protocols
         internal byte[] EncodeToBytes()
         {
             int plen = pPayload.Length;
-            pHeader.packageAttribute.payloadLength = (UInt32)plen;
+            pHeader.packetAttribute.payloadLength = (UInt32)plen;
 
             byte[] buffer = new byte[11 + plen];
-            buffer[0] = pHeader.packageFlag;
-            buffer[1] = (byte)(pHeader.packageId >> 8);
-            buffer[2] = (byte)pHeader.packageId;
-            buffer[3] = pHeader.packageType;
-            buffer[4] = (byte)(pHeader.packageAttribute.packageCount >> 8);
-            buffer[5] = (byte)pHeader.packageAttribute.packageCount;
-            buffer[6] = (byte)(pHeader.packageAttribute.payloadLength >> 24);
-            buffer[7] = (byte)(pHeader.packageAttribute.payloadLength >> 16);
-            buffer[8] = (byte)(pHeader.packageAttribute.payloadLength >> 8);
-            buffer[9] = (byte)(pHeader.packageAttribute.payloadLength);
+            buffer[0] = packageFlag;
+            buffer[1] = (byte)(pHeader.packetId >> 8);
+            buffer[2] = (byte)pHeader.packetId;
+            buffer[3] = pHeader.packetType;
+            buffer[4] = (byte)(pHeader.packetAttribute.packetCount >> 8);
+            buffer[5] = (byte)pHeader.packetAttribute.packetCount;
+            buffer[6] = (byte)(pHeader.packetAttribute.payloadLength >> 24);
+            buffer[7] = (byte)(pHeader.packetAttribute.payloadLength >> 16);
+            buffer[8] = (byte)(pHeader.packetAttribute.payloadLength >> 8);
+            buffer[9] = (byte)(pHeader.packetAttribute.payloadLength);
 
             Buffer.BlockCopy(pPayload, 0, buffer, 10, plen);
-            buffer[buffer.Length - 1] = pHeader.packageFlag;
+            buffer[buffer.Length - 1] = packageFlag;
 
-            return Escape(buffer, pHeader.packageFlag);
+            return Escape(buffer);
         }
 
         /// <summary>
@@ -57,28 +64,28 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <returns></returns>
         internal bool DeocdeFromBytes(byte[] buffer, int offset, int size)
         {
+            //还原转义并且过滤标志位
             byte[] dst = Restore(buffer, offset, size);
 
-            uint plen= dst.ToUInt32(6);
+            uint plen= dst.ToUInt32(5);
 
             if (plen >= size - 11)
-                throw new Exception("content buffer overflow...");
+                return false;
 
             if (pHeader == null)
-                pHeader = new PackageHeader();
+                pHeader = new PacketHeader();
 
-            pHeader.packageFlag = dst[0];
-            pHeader.packageId = dst.ToUInt16(1);
-            pHeader.packageType = dst[3];
+            pHeader.packetId = dst.ToUInt16(0);
+            pHeader.packetType = dst[2];
 
-            if (pHeader.packageAttribute == null)
-                pHeader.packageAttribute = new PackageAttribute();
+            if (pHeader.packetAttribute == null)
+                pHeader.packetAttribute = new PacketAttribute();
 
-            pHeader.packageAttribute.packageCount = dst.ToUInt16(4);
-            pHeader.packageAttribute.payloadLength = plen;// dst.ToUInt32(6);
+            pHeader.packetAttribute.packetCount = dst.ToUInt16(3);
+            pHeader.packetAttribute.payloadLength = plen;// dst.ToUInt32(5);
          
-            pPayload = new byte[pHeader.packageAttribute.payloadLength];
-            Buffer.BlockCopy(dst, 10, pPayload, 0, pPayload.Length);
+            pPayload = new byte[pHeader.packetAttribute.payloadLength];
+            Buffer.BlockCopy(dst, 9, pPayload, 0, pPayload.Length);
 
             return true;
         }
@@ -89,14 +96,14 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <param name="buffer"></param>
         /// <param name="flag"></param>
         /// <returns></returns>
-        private unsafe byte[] Escape(byte[] buffer, byte flag)
+        private unsafe byte[] Escape(byte[] buffer)
         {
-            int flagCnt = CheckEscapeFlagBitCount(buffer, flag);
-            if (flagCnt == 0) return buffer;
+           var tCnt = CheckEscapeFlagBitCount(buffer);
+            if ((tCnt.pkgFlag + tCnt.subFlag) == 0) return buffer;
 
             int plen = buffer.Length - 2;
 
-            byte[] rBuffer = new byte[buffer.Length + flagCnt];
+            byte[] rBuffer = new byte[buffer.Length + tCnt.pkgFlag + tCnt.subFlag];
             rBuffer[0] = buffer[0];//起始标识位
 
             fixed (byte* dst = &(rBuffer[1]), src = &(buffer[1]))
@@ -105,12 +112,18 @@ namespace Bouyei.NetProviderFactory.Protocols
                 byte* _src = src;
 
                 //消息头和消息体
-                while (plen >= 0)
+                while (plen > 0)
                 {
-                    if (*(_src) == flag)
+                    if (*_src== packageFlag)
                     {
-                        *(_dst) = *(_src);
+                        *_dst = subFlag;
                         *(_dst + 1) = 0x01;
+                        _dst += 2;
+                    }
+                    else if(*_src==subFlag)
+                    {
+                        *_dst = subFlag;
+                        *(_dst + 1) = 0x02;
                         _dst += 2;
                     }
                     else
@@ -138,10 +151,8 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <returns></returns>
         private unsafe byte[] Restore(byte[] buffer, int offset, int size)
         {
-            byte flag = buffer[offset];
-
-            int flagCnt = CheckRestoreFlagBitCount(buffer, flag, offset, size);
-            if (flagCnt == 0)
+            var tCnt = CheckRestoreFlagBitCount(buffer,  offset, size);
+            if ((tCnt.subCnt+tCnt.pkgCnt) == 0)
             {
                 if (buffer.Length == size) return buffer;
                 else
@@ -151,12 +162,11 @@ namespace Bouyei.NetProviderFactory.Protocols
                     return buff;
                 }
             }
-            byte[] rBuffer = new byte[size - flagCnt];
 
-            rBuffer[0] = flag; //标志位
             int pLen = size - 2;//去掉标志位后的长度
+            byte[] rBuffer = new byte[pLen - tCnt.pkgCnt - tCnt.subCnt];
 
-            fixed (byte* dst = &(rBuffer[1]), src = &(buffer[offset + 1]))
+            fixed (byte* dst = rBuffer, src = &(buffer[offset + 1]))
             {
                 byte* _src = src;
                 byte* _dst = dst;
@@ -167,26 +177,30 @@ namespace Bouyei.NetProviderFactory.Protocols
                 //消息头和消息体
                 while (pLen >= 0)
                 {
-                    if (*(_src) == flag)
+                    if (*(_src) == subFlag && *(_src + 1) == 0x01)
                     {
-                        if ((pLen - 1) >= 0
-                            && *(_src + 1) == 0x01)
-                        {
-                            *(_dst) = flag;
-                            _src += 2;
-                            _dst += 1;
-                            pLen -= 2;
 
-                            continue;
-                        }
+                        *(_dst) = packageFlag;
+                        _src += 2;
+                        _dst += 1;
+                        pLen -= 2;
                     }
-                    *(_dst) = *(_src);
-                    _src += 1;
-                    _dst += 1;
-                    pLen -= 1;
+                    else if (*(_src) == subFlag && *(_src + 1) == 0x02)
+                    {
+                        *(_dst) = subFlag;
+                        _src += 2;
+                        _dst += 1;
+                        pLen -= 2;
+                    }
+                    else
+                    {
+                        *(_dst) = *(_src);
+                        _src += 1;
+                        _dst += 1;
+                        pLen -= 1;
+                    }
                 }
-                //结束标志位
-                *(_dst) = *(_src);
+  
                 return rBuffer;
             }
         }
@@ -197,24 +211,28 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <param name="buffer"></param>
         /// <param name="flag"></param>
         /// <returns></returns>
-        private unsafe int CheckEscapeFlagBitCount(byte[] buffer, byte flag)
+        private unsafe (int pkgFlag,int subFlag) CheckEscapeFlagBitCount(byte[] buffer)
         {
             int len = buffer.Length - 2;//去头尾标识位
-            int c = 0;
+            int pktCnt = 0, subCnt = 0;
             fixed (byte* src = &(buffer[1]))
             {
                 byte* _src = src;
                 do
                 {
-                    if (*_src == flag)
+                    if (*_src == packageFlag)
                     {
-                        ++c;
+                        ++pktCnt;
+                    }
+                    else if (*_src == subFlag)
+                    {
+                        ++subCnt;
                     }
                     _src += 1;
                     --len;
                 } while (len > 0);
             }
-            return c;
+            return (pktCnt, subCnt);
         }
 
         /// <summary>
@@ -225,30 +243,35 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <param name="offset"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        private unsafe int CheckRestoreFlagBitCount(byte[] buffer, byte flag, int offset, int size)
+        private unsafe (int pkgCnt,int subCnt) CheckRestoreFlagBitCount(byte[] buffer, int offset, int size)
         {
             int len = size - 2;
-            int i = offset + 1, c = 0;
+            int i = offset + 1, pkgCnt = 0, subCnt = 0;
             fixed (byte* src = &(buffer[offset + 1]))
             {
                 byte* _src = src;
                 do
                 {
-                    if (*_src == flag)
+                    if (*_src == subFlag && *(_src + 1) == 0x01)
                     {
-                        if ((len - 1) >= 0 && *(_src + 1) == 0x01)
-                        {
-                            ++c;
-                            _src += 2;
-                            len -= 2;
-                            continue;
-                        }
+                        ++pkgCnt;
+                        _src += 2;
+                        len -= 2;
                     }
-                    _src += 1;
-                    --len;
+                    else if (*_src == subFlag && *(_src + 1) == 0x02)
+                    {
+                        ++subCnt;
+                        _src += 2;
+                        len -= 2;
+                    }
+                    else
+                    {
+                        _src += 1;
+                        --len;
+                    }
                 } while (len > 0);
             }
-            return c;
+            return (pkgCnt, subCnt);
         }
         #endregion
     }

@@ -42,17 +42,15 @@ namespace Bouyei.NetProviderFactoryDemo
             {
                 try
                 {
-                    byte[] buffer = protocolProvider.Encode(new Package()
+                    byte[] buffer = protocolProvider.Encode(new Packet()
                     {
-                        pHeader = new PackageHeader()
+                        pHeader = new PacketHeader()
                         {
-                            packageAttribute = new PackageAttribute()
+                            packetAttribute = new PacketAttribute()
                             {
-                                packageCount = 1,//自定义,指定该消息需要分多少个数据包发送才完成
-                                payloadLength = (UInt32)sendbuffer.Length//数据载体长度
+                                packetCount = 1,//自定义,指定该消息需要分多少个数据包发送才完成
                             },
-                            packageFlag = 0x07,//根据业务自定义
-                            packageId = 0x10//根据业务自定义，标志该数据包的类型
+                            packetId = 0x10//根据业务自定义，标志该数据包的类型
                         },
                         pPayload = sendbuffer//携带的数据内容
                     });
@@ -90,9 +88,9 @@ namespace Bouyei.NetProviderFactoryDemo
                 {
                     try
                     {
-                        Package pkg = protocolProvider.Decode(buff, offset, count);
+                        Packet pkg = protocolProvider.Decode(buff, offset, count);
 
-                        if (pkg.pPayload.Length == pkg.pHeader.packageAttribute.payloadLength)
+                        if (pkg.pPayload.Length == pkg.pHeader.packetAttribute.payloadLength)
                             client_rec_cnt += 1;
                     }
                     catch(Exception ex)
@@ -193,24 +191,27 @@ namespace Bouyei.NetProviderFactoryDemo
             INetProtocolProvider protocolProvider = NetProtocolProvider.CreateNetProtocolProvider();
 
             //数据内容打包成字节
-            byte[] content = new byte[] { 1, 3, 4, 0x07, 0x01, 0x07 };
-            byte[] buffer= protocolProvider.Encode(new Package()
+            byte[] content = new byte[] { 1, 3, 4, 0xfe, 0x01, 0xfd,0x02 };
+            byte[] buffer= protocolProvider.Encode(new Packet()
             {
-                pHeader = new PackageHeader()
+                pHeader = new PacketHeader()
                 {
-                    packageAttribute = new PackageAttribute()
+                    packetAttribute = new PacketAttribute()
                     {
-                        packageCount = 1,//自定义,指定该消息需要分多少个数据包发送才完成
-                        payloadLength = (UInt32)content.Length//数据载体长度
+                        packetCount = 1,//自定义,指定该消息需要分多少个数据包发送才完成
                     },
-                    packageFlag = 0x07,//根据业务自定义
-                    packageId = 0x10//根据业务自定义
+                    packetId = 0x10//根据业务自定义
                 },
                 pPayload = content//携带的数据内容
             });
 
+            //使用接收管理缓冲池解析数据包
+            INetPacketProvider pkgProvider = NetPacketProvider.CreateNetPacketProvider(1024);
+            bool rt= pkgProvider.SetBlock(buffer, 0, buffer.Length);
+            var dePkg= pkgProvider.GetBlock();
+
             //解析数据包成结构信息
-            var dePkg = protocolProvider.Decode(buffer, 0, buffer.Length);
+           // var dePkg = protocolProvider.Decode(buffer, 0, buffer.Length);
         }
     }
 }

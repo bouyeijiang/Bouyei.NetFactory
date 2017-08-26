@@ -15,6 +15,9 @@ namespace Bouyei.NetProviderFactory
             return new NetProtocolProvider();
         }
 
+        public NetProtocolProvider()
+        { }
+
         /// <summary>
         /// 解码
         /// </summary>
@@ -22,9 +25,9 @@ namespace Bouyei.NetProviderFactory
         /// <param name="offset"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        public Package Decode(byte[] buffer, int offset, int size)
+        public Packet Decode(byte[] buffer, int offset, int size)
         {
-            Package pkg = new Package();
+            Packet pkg = new Packet();
             if (pkg.DeocdeFromBytes(buffer, offset, size)) return pkg;
             else return null;
         }
@@ -34,7 +37,7 @@ namespace Bouyei.NetProviderFactory
         /// </summary>
         /// <param name="pkg"></param>
         /// <returns></returns>
-        public byte[] Encode(Package pkg)
+        public byte[] Encode(Packet pkg)
         {
             return pkg.EncodeToBytes();
         }
