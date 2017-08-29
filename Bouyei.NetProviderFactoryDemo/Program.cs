@@ -208,7 +208,8 @@ namespace Bouyei.NetProviderFactoryDemo
             //使用接收管理缓冲池解析数据包
             INetPacketProvider pkgProvider = NetPacketProvider.CreateNetPacketProvider(1024);
             bool rt= pkgProvider.SetBlock(buffer, 0, buffer.Length);
-            var dePkg= pkgProvider.GetBlock();
+            rt = pkgProvider.SetBlock(buffer, 0, buffer.Length);
+            var dePkg= pkgProvider.GetBlocks();
 
             //解析数据包成结构信息
            // var dePkg = protocolProvider.Decode(buffer, 0, buffer.Length);

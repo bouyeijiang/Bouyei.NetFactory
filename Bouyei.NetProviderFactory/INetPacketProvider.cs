@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 
 namespace Bouyei.NetProviderFactory
 {
+    using Protocols;
+
     public interface INetPacketProvider
     {
         bool SetBlock(byte[] buffer, int offset, int size);
 
-        Protocols.Packet GetBlock();
+        List<Packet> GetBlocks();
     }
 }

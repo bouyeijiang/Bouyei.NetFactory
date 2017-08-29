@@ -28,9 +28,11 @@ namespace Bouyei.NetProviderFactory.Protocols
             return true;
         }
 
-        public Packet GetBlock()
+        public List<Packet> GetBlocks()
         {
             int head = -1;
+            List<Packet> pkgs = new List<Packet>(2);
+        again:
             for (int i = bucket.Head; i < bucket.Tail; ++i)
             {
                 if (bucket.Array[i] != Packet.packageFlag)
@@ -43,37 +45,44 @@ namespace Bouyei.NetProviderFactory.Protocols
                     break;
                 }
             }
-            if (head == -1) return null;
+            if (head == -1) return pkgs;
 
             //数据包长度
             int pkgLength = CheckCompletePackageLength(bucket.Array, head);
-            if (pkgLength == 0) return null;
+            if (pkgLength == 0) return pkgs;
 
             Packet pkg = new Packet();
             bool rt = pkg.DeocdeFromBytes(bucket.Array, head, pkgLength);
-          
-            for(int i = head; i < pkgLength; ++i)
+            if (rt)
+            {
+                pkgs.Add(pkg);
+            }
+
+            for(int i = 0; i < pkgLength; ++i)
             {
                 bucket.DeQueue();
             }
 
-            return pkg;
+            if (bucket.Length > 0)
+            {
+                goto again;
+            }
+            
+            return pkgs;
         }
 
         private unsafe int CheckCompletePackageLength(byte[] buff,int offset)
         {
             fixed (byte* src = &(buff[offset+1]))
             {
-                int i = offset;
                 int c = 0;
-                while (i <bucket.Length)
+                while (c <=bucket.Length)
                 {
-                    ++c;
-                    ++i;
-                    if (*(src+i) == Packet.packageFlag)
+                    if (*(src+c) == Packet.packageFlag)
                     {
                         return c+2;//加上标志位
                     }
+                    ++c;
                 }
                 c = 0;
                 return c;

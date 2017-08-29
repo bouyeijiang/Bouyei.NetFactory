@@ -32,11 +32,11 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public Packet GetBlock()
+        public List<Packet> GetBlocks()
         {
             lock (lockObject)
             {
-                return packetQueue.GetBlock();
+                return packetQueue.GetBlocks();
             }
         }
     }
