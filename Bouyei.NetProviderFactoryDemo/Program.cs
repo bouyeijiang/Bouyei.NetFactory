@@ -26,7 +26,7 @@ namespace Bouyei.NetProviderFactoryDemo
             int port = 13145;
             int svc_send_cnt = 0, svc_rec_cnt = 0, client_send_cnt = 0, client_rec_cnt = 0;
             //服务端
-            NetServerProvider serverSocket = NetServerProvider.CreateNetServerProvider();
+            NetServerProvider serverSocket = NetServerProvider.CreateProvider();
 
             byte[] sendbuffer = new byte[2048];
             for (int i = 0; i < sendbuffer.Length; ++i)
@@ -35,7 +35,7 @@ namespace Bouyei.NetProviderFactoryDemo
             }
 
             //将数据内容打包成指定格式发送
-            INetProtocolProvider protocolProvider = NetProtocolProvider.CreateNetProtocolProvider();
+            INetProtocolProvider protocolProvider = NetProtocolProvider.CreateProvider();
            
             //已经截取接收到的真实数据
             serverSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
@@ -82,7 +82,7 @@ namespace Bouyei.NetProviderFactoryDemo
                 Console.WriteLine("已启动服务。。。");
 
                 //客户端
-                NetClientProvider clientSocket = NetClientProvider.CreateNetClientProvider();
+                NetClientProvider clientSocket = NetClientProvider.CreateProvider();
                 clientSocket.SentHanlder = new OnSentHandler((stoken, buff,offset,cont) =>
                 {
                     client_send_cnt += 1;
@@ -131,7 +131,7 @@ namespace Bouyei.NetProviderFactoryDemo
             int port = 12345;
             int svc_c = 0, cli_c = 0, cli_c2 = 0;
             INetClientProvider clientProvider = null;
-            INetServerProvider serverProvider = NetServerProvider.CreateNetServerProvider(4096, 64, NetProviderType.Udp);
+            INetServerProvider serverProvider = NetServerProvider.CreateProvider(4096, 64, NetProviderType.Udp);
             serverProvider.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
             {
                 ++svc_c;
@@ -147,7 +147,7 @@ namespace Bouyei.NetProviderFactoryDemo
                     sendbuffer[i] = (byte)(i > 255 ? 255 : i);
                 }
                 
-                clientProvider = NetClientProvider.CreateNetClientProvider(4096, 4, NetProviderType.Udp);
+                clientProvider = NetClientProvider.CreateProvider(4096, 4, NetProviderType.Udp);
                 clientProvider.SentHanlder = new OnSentHandler((sToken,buff,offset, count) =>
                 {
                     ++sentcnt;
@@ -161,7 +161,7 @@ namespace Bouyei.NetProviderFactoryDemo
                 bool isConn = clientProvider.ConnectTo(port, "127.0.0.1");
                 int c = 100000;
 
-                INetClientProvider netClient = NetClientProvider.CreateNetClientProvider(4096, 4, NetProviderType.Udp);
+                INetClientProvider netClient = NetClientProvider.CreateProvider(4096, 4, NetProviderType.Udp);
                 netClient.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
                   {
                       ++cli_c2;
@@ -192,7 +192,7 @@ namespace Bouyei.NetProviderFactoryDemo
 
         private static void ProtocolsDemo()
         {
-            INetProtocolProvider protocolProvider = NetProtocolProvider.CreateNetProtocolProvider();
+            INetProtocolProvider protocolProvider = NetProtocolProvider.CreateProvider();
 
             //数据内容打包成字节
             byte[] content = new byte[] { 1, 3, 4, 0xfe, 0x01, 0xfd,0x02 };
@@ -210,7 +210,7 @@ namespace Bouyei.NetProviderFactoryDemo
             });
 
             //使用接收管理缓冲池解析数据包
-            INetPacketProvider pkgProvider = NetPacketProvider.CreateNetPacketProvider(1024);
+            INetPacketProvider pkgProvider = NetPacketProvider.CreateProvider(1024);
             bool rt= pkgProvider.SetBlock(buffer, 0, buffer.Length);
             rt = pkgProvider.SetBlock(buffer, 0, buffer.Length);
             var dePkg= pkgProvider.GetBlocks();
@@ -223,8 +223,8 @@ namespace Bouyei.NetProviderFactoryDemo
         {
             int port = 13145;
 
-            INetServerProvider netServerProvider = NetServerProvider.CreateNetServerProvider();
-            INetTokenPoolProvider tokenPool = NetTokenPoolProvider.CreateNetTokenPoolProvider(60);
+            INetServerProvider netServerProvider = NetServerProvider.CreateProvider();
+            INetTokenPoolProvider tokenPool = NetTokenPoolProvider.CreateProvider(60);
             tokenPool.ConnectionTimeout = 60;
             SocketToken _sToken = null;
 
@@ -239,7 +239,7 @@ namespace Bouyei.NetProviderFactoryDemo
             bool isOk = netServerProvider.Start(port);
             if (isOk)
             {
-                INetClientProvider netClientProvider = NetClientProvider.CreateNetClientProvider();
+                INetClientProvider netClientProvider = NetClientProvider.CreateProvider();
                 netClientProvider.DisconnectedHanlder = new OnDisconnectedHandler((sToken) =>
                 {
                     Console.WriteLine("client disconnected");

@@ -19,7 +19,7 @@ namespace Bouyei.NetProviderFactory
             packetQueue = new PacketQueue(capacity);
         }
 
-        public static NetPacketProvider CreateNetPacketProvider(int capacity)
+        public static NetPacketProvider CreateProvider(int capacity)
         {
             return new NetPacketProvider(capacity);
         }

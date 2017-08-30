@@ -51,7 +51,7 @@
     <Compile Include="INetPacketProvider.cs" />
     <Compile Include="INetTokenPoolProvider.cs" />
     <Compile Include="NetClientProvider.cs" />
-    <Compile Include="NetDelegateHandler.cs" />
+    <Compile Include="DelegateHandler.cs" />
     <Compile Include="NetTokenPoolProvider.cs" />
     <Compile Include="NetPacketProvider.cs" />
     <Compile Include="NetProtocolProvider.cs" />

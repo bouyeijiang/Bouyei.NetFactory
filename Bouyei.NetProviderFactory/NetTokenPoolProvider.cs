@@ -19,7 +19,7 @@ namespace Bouyei.NetProviderFactory
 
         public int Count { get { return tokenConnectionManager.Count; } }
 
-        public static NetTokenPoolProvider CreateNetTokenPoolProvider(int taskExecutePeriod)
+        public static NetTokenPoolProvider CreateProvider(int taskExecutePeriod)
         {
             return new NetTokenPoolProvider(taskExecutePeriod);
         }

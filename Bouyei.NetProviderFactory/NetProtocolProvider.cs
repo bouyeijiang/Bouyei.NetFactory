@@ -10,7 +10,7 @@ namespace Bouyei.NetProviderFactory
 
     public class NetProtocolProvider : INetProtocolProvider
     {
-        public static NetProtocolProvider CreateNetProtocolProvider()
+        public static NetProtocolProvider CreateProvider()
         {
             return new NetProtocolProvider();
         }

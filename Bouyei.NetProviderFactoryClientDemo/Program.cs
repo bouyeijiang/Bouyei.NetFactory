@@ -14,7 +14,7 @@ namespace Bouyei.NetProviderFactoryClientDemo
         {
             int port = 13145;
 
-            NetClientProvider clientSocket = NetClientProvider.CreateNetClientProvider();
+            NetClientProvider clientSocket = NetClientProvider.CreateProvider();
 
             //异步连接
             clientSocket.Connect(port, "127.0.0.1");

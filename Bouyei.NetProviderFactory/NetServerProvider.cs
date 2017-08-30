@@ -173,7 +173,7 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public static NetServerProvider CreateNetServerProvider(
+        public static NetServerProvider CreateProvider(
             int bufferSizeByConnection = 4096,
             int maxNumberOfConnections = 64,
             NetProviderType netProviderType = NetProviderType.Tcp)
