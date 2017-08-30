@@ -17,6 +17,8 @@ namespace Bouyei.NetProviderFactory
             set { tokenConnectionManager.ConnectionTimeout = value; }
         }
 
+        public int Count { get { return tokenConnectionManager.Count; } }
+
         public static NetTokenPoolProvider CreateNetTokenPoolProvider(int taskExecutePeriod)
         {
             return new NetTokenPoolProvider(taskExecutePeriod);
@@ -32,14 +34,24 @@ namespace Bouyei.NetProviderFactory
             tokenConnectionManager.AddToken(ncToken);
         }
 
-        public void RemoveToken(NetConnectionToken ncToken)
+        public bool RemoveToken(NetConnectionToken ncToken,bool isClose=true)
         {
-            tokenConnectionManager.RemoveToken(ncToken);
+          return  tokenConnectionManager.RemoveToken(ncToken,isClose);
         }
 
         public NetConnectionToken GetTokenById(int Id)
         {
           return  tokenConnectionManager.GetTokenById(Id);
+        }
+
+        public NetConnectionToken GetTokenBySocketToken(SocketToken sToken)
+        {
+            return tokenConnectionManager.GetTokenBySocketToken(sToken); 
+        }
+
+        public bool RefreshExpireToken(SocketToken sToken)
+        {
+            return tokenConnectionManager.RefreshConnectionToken(sToken);
         }
     }
 }

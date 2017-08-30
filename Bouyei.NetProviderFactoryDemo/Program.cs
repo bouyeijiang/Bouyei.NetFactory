@@ -9,15 +9,16 @@ namespace Bouyei.NetProviderFactoryDemo
 {
     using NetProviderFactory;
     using NetProviderFactory.Protocols;
+    using NetProviderFactory.Pools;
 
     class Program
     {
         static void Main(string[] args)
         {
-            ProtocolsDemo();
-
+            //ProtocolsDemo();
             //UdpDemo();
-            TcpDemo();
+            //TcpDemo();
+            ConnectionPoolManagerDemo();
         }
 
         private static void TcpDemo()
@@ -36,7 +37,6 @@ namespace Bouyei.NetProviderFactoryDemo
             //将数据内容打包成指定格式发送
             INetProtocolProvider protocolProvider = NetProtocolProvider.CreateNetProtocolProvider();
            
-
             //已经截取接收到的真实数据
             serverSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
             {
@@ -62,6 +62,10 @@ namespace Bouyei.NetProviderFactoryDemo
                 {
                     Console.WriteLine(ex.ToString());
                 }
+            });
+            serverSocket.AcceptHandler = new OnAcceptHandler((sToken) =>
+            {
+
             });
             serverSocket.SentHanlder = new OnSentHandler((stoken,buff, offset,count) =>
             {
@@ -107,7 +111,7 @@ namespace Bouyei.NetProviderFactoryDemo
                 {
                     for (int i = 0; i < 100000; i++)
                     {
-                        if (i% 100 == 0)
+                        if (i % 100 == 0)
                         {
                             Console.WriteLine(clientSocket.SendBufferNumber + ":" + i);
                             Console.WriteLine(string.Format("svc[send:{0},rec:{1}],client[send{2},rec:{3}]", svc_send_cnt, svc_rec_cnt, client_send_cnt, client_rec_cnt));
@@ -213,6 +217,48 @@ namespace Bouyei.NetProviderFactoryDemo
 
             //解析数据包成结构信息
            // var dePkg = protocolProvider.Decode(buffer, 0, buffer.Length);
+        }
+
+        private static void ConnectionPoolManagerDemo()
+        {
+            int port = 13145;
+
+            INetServerProvider netServerProvider = NetServerProvider.CreateNetServerProvider();
+            INetTokenPoolProvider tokenPool = NetTokenPoolProvider.CreateNetTokenPoolProvider(60);
+            tokenPool.ConnectionTimeout = 60;
+            SocketToken _sToken = null;
+
+            netServerProvider.AcceptHandler = new OnAcceptHandler((sToken) => {
+                _sToken = sToken;
+                tokenPool.AddToken(new NetConnectionToken()
+                {
+                    Token = sToken
+                });
+            });
+
+            bool isOk = netServerProvider.Start(port);
+            if (isOk)
+            {
+                INetClientProvider netClientProvider = NetClientProvider.CreateNetClientProvider();
+                netClientProvider.DisconnectedHanlder = new OnDisconnectedHandler((sToken) =>
+                {
+                    Console.WriteLine("client disconnected");
+                });
+                bool rt = netClientProvider.ConnectTo(port, "127.0.0.1");
+                if (rt)
+                {
+                    while (tokenPool.Count == 0)
+                    {
+                        Thread.Sleep(10);
+                    }
+                    var rtToken = tokenPool.GetTokenBySocketToken(_sToken);
+                    bool refreshRt = tokenPool.RefreshExpireToken(_sToken);
+                    rt = tokenPool.RemoveToken(new NetConnectionToken() { Token = _sToken });
+                    Console.WriteLine("pool count:"+tokenPool.Count);
+                    Console.ReadKey();
+                }
+            }
+
         }
     }
 }
