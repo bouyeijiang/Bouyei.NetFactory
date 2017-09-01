@@ -210,31 +210,31 @@ namespace Bouyei.NetProviderFactory
             }
         }
 
-        public void Send(SocketToken sToken, byte[] buffer,bool waitingSignal=true)
+        public void Send(SocketToken sToken, byte[] buffer,bool isWaiting=true)
         {
             if (NetProviderType == NetProviderType.Tcp)
             {
-                tcpServerProvider.Send(sToken, buffer, 0, buffer.Length,waitingSignal);
+                tcpServerProvider.Send(sToken, buffer, 0, buffer.Length,isWaiting);
             }
             else if (NetProviderType == NetProviderType.Udp)
             {
                 udpServerProvider.Send(
                     sToken.TokenIpEndPoint,
-                    buffer, 0, buffer.Length,waitingSignal);
+                    buffer, 0, buffer.Length,isWaiting);
             }
         }
 
-        public void Send(SocketToken sToken, byte[] buffer, int offset, int size, bool waitingSignal = true)
+        public void Send(SocketToken sToken, byte[] buffer, int offset, int size, bool isWaiting = true)
         {
             if (NetProviderType == NetProviderType.Tcp)
             {
-                tcpServerProvider.Send(sToken, buffer, offset, size, waitingSignal);
+                tcpServerProvider.Send(sToken, buffer, offset, size, isWaiting);
             }
             else if (NetProviderType == NetProviderType.Udp)
             {
                 udpServerProvider.Send(
                     sToken.TokenIpEndPoint,
-                    buffer, offset, size, waitingSignal);
+                    buffer, offset, size, isWaiting);
             }
         }
 

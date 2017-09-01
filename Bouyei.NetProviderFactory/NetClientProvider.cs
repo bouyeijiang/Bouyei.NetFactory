@@ -250,27 +250,27 @@ namespace Bouyei.NetProviderFactory
             return false;
         }
 
-        public void Send(byte[] buffer,bool waitingSignal=true)
+        public void Send(byte[] buffer,bool isWaiting=true)
         {
             if (NetProviderType == NetProviderType.Tcp)
             {
-                tcpClientProvider.Send(buffer, waitingSignal);
+                tcpClientProvider.Send(buffer, isWaiting);
             }
             else if (NetProviderType == NetProviderType.Udp)
             {
-                udpClientProvider.Send(buffer,0,buffer.Length,waitingSignal);
+                udpClientProvider.Send(buffer,0,buffer.Length,isWaiting);
             }
         }
 
-        public void Send(byte[] buffer, int offset, int size, bool waitingSignal = true)
+        public void Send(byte[] buffer, int offset, int size, bool isWaiting = true)
         {
             if (NetProviderType == NetProviderType.Tcp)
             {
-                tcpClientProvider.Send(buffer, offset, size, waitingSignal);
+                tcpClientProvider.Send(buffer, offset, size, isWaiting);
             }
             else if (NetProviderType == NetProviderType.Udp)
             {
-                udpClientProvider.Send(buffer, offset, size, waitingSignal);
+                udpClientProvider.Send(buffer, offset, size, isWaiting);
             }
         }
 

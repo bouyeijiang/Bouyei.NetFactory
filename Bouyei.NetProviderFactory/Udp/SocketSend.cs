@@ -78,46 +78,39 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <summary>
         /// 发送数据
         /// </summary>
-        /// <param name="data"></param>
+        /// <param name="buffer"></param>
         /// <param name="offset"></param>
         /// <param name="size"></param>
-        /// <param name="waitingSignal"></param>
+        /// <param name="isWaiting"></param>
         /// <param name="remoteEP"></param>
-        public void Send(byte[] data, int offset, int size, bool waitingSignal, IPEndPoint remoteEP)
+        public void Send(byte[] buffer, int offset, int size, bool isWaiting, IPEndPoint remoteEP)
         {
-            SocketAsyncEventArgs tArgs = null;
             try
             {
-                tArgs = tokenPool.Get();
-                //如果发送对象池已经为空
-                if (tArgs == null)
+                ArraySegment<byte>[] segItems = sentBufferPool.BufferToSegments(buffer, offset, size);
+                foreach (var seg in segItems)
                 {
-                    while (waitingSignal)
+                    var tArgs = tokenPool.GetEmptyWait(isWaiting);
+                    if (tArgs == null)
+                        throw new Exception("发送缓冲池已用完,等待回收超时...");
+
+                    tArgs.RemoteEndPoint = remoteEP;
+                    Socket s = SocketVersion(remoteEP);
+                    tArgs.UserToken = s;
+
+                    if (!sentBufferPool.WriteBuffer(tArgs, seg.Array, seg.Offset, seg.Count))
                     {
-                        Thread.Sleep(500);
-                        tArgs = tokenPool.Get();
-                        if (tArgs != null) break;
+                        tokenPool.Set(tArgs);
+
+                        throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sentBufferPool.BlockSize));
                     }
-                }
-                if (tArgs == null)
-                    throw new Exception("发送缓冲池已用完,等待回收...");
 
-                tArgs.RemoteEndPoint = remoteEP;
-                Socket s = SocketVersion(remoteEP);
-                tArgs.UserToken = s;
-
-                if (!sentBufferPool.WriteBuffer(tArgs, data, offset, size))
-                {
-                    tokenPool.Set(tArgs);
-
-                    throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sentBufferPool.BlockSize));
-                }
-
-                if (tArgs.RemoteEndPoint != null)
-                {
-                    if (!s.SendToAsync(tArgs))
+                    if (tArgs.RemoteEndPoint != null)
                     {
-                        ProcessSent(tArgs);
+                        if (!s.SendToAsync(tArgs))
+                        {
+                            ProcessSent(tArgs);
+                        }
                     }
                 }
             }

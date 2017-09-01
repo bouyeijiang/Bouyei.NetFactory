@@ -25,7 +25,7 @@ namespace Bouyei.NetProviderFactory
         OnDisconnectedHandler DisconnectedHanlder { get; set; }
 
         ChannelProviderType ChannelProviderType { get; }
-
+        int SendBufferNumber { get; }
         NetProviderType NetProviderType { get;}
         void Disconnect();
 
@@ -33,9 +33,9 @@ namespace Bouyei.NetProviderFactory
 
         bool ConnectTo(int port, string ip);
 
-        void Send(byte[] buffer, bool waitingSignal = true);
+        void Send(byte[] buffer, bool isWaiting = true);
 
-        void Send(byte[] buffer, int offset, int size, bool waitingSignal = true);
+        void Send(byte[] buffer, int offset, int size, bool isWaiting = true);
 
         bool ConnectSync(int port, string ip);
 

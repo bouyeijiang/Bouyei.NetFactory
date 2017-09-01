@@ -32,19 +32,8 @@ namespace Bouyei.NetProviderFactory.Protocols
         {
             int head = -1;
             List<Packet> pkgs = new List<Packet>(2);
-        again:
-            for (int i = bucket.Head; i < bucket.Tail; ++i)
-            {
-                if (bucket.Array[i] != Packet.packageFlag)
-                {
-                    bucket.DeQueue();
-                }
-                else
-                {
-                    head = i;
-                    break;
-                }
-            }
+            again:
+            head = bucket.TakeHeadIndex(Packet.packageFlag);
             if (head == -1) return pkgs;
 
             //数据包长度

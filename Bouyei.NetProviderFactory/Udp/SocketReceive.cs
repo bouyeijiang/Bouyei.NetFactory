@@ -7,9 +7,7 @@ namespace Bouyei.NetProviderFactory.Udp
     internal class SocketReceive : IDisposable
     {
         #region variable
-        private Socket receiveSocket = null;
-        //private SocketTokenManager<SocketAsyncEventArgs> receivePool = null;
-        //private SocketBufferManager receiveBufferPool = null;
+        private Socket recSocket = null;
         private SocketAsyncEventArgs socketArgs = null;
         private byte[] recBuffer = null;
         private bool isClose = false;
@@ -31,10 +29,10 @@ namespace Bouyei.NetProviderFactory.Udp
         public SocketReceive(int port)
         {
             IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, port);
-            receiveSocket = new Socket(localEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-            receiveSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
+            recSocket = new Socket(localEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            recSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
 
-            receiveSocket.Bind(localEndPoint);
+            recSocket.Bind(localEndPoint);
         }
 
 
@@ -51,7 +49,7 @@ namespace Bouyei.NetProviderFactory.Udp
             if (isDisposing)
             {
                 isClose = true;
-                receiveSocket.Dispose();
+                recSocket.Dispose();
                 socketArgs.Dispose();
                 DisposeSocketPool();
                 _isDisposed = true;
@@ -66,8 +64,8 @@ namespace Bouyei.NetProviderFactory.Udp
             //receivePool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
             socketArgs = new SocketAsyncEventArgs();
 
-            socketArgs.UserToken = receiveSocket;
-            socketArgs.RemoteEndPoint = receiveSocket.LocalEndPoint;
+            socketArgs.UserToken = recSocket;
+            socketArgs.RemoteEndPoint = recSocket.LocalEndPoint;
             socketArgs.Completed += SocketArgs_Completed;
             recBuffer = new byte[bufferSize];
             socketArgs.SetBuffer(recBuffer, 0, bufferSize);
@@ -88,7 +86,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         public void StartReceive()
         {
-            bool rt = receiveSocket.ReceiveFromAsync(socketArgs);
+            bool rt = recSocket.ReceiveFromAsync(socketArgs);
             if (rt == false)
             {
                 ProcessReceive(socketArgs);
@@ -110,10 +108,10 @@ namespace Bouyei.NetProviderFactory.Udp
         public void StopReceive()
         {
             isClose = true;
-            if (receiveSocket != null)
+            if (recSocket != null)
             {
-                receiveSocket.Shutdown(SocketShutdown.Both);
-                receiveSocket.Close();
+                recSocket.Shutdown(SocketShutdown.Both);
+                recSocket.Close();
             }
         }
         #endregion

@@ -85,6 +85,19 @@ namespace Bouyei.NetProviderFactory.Protocols
             return v;
         }
 
+        public int TakeHeadIndex(T value)
+        {
+            while (length > 0)
+            {
+                if (IsEmpty()) return -1;
+                if (value.Equals(bucket[head])) return head;
+
+                head = (head + 1) % capacity;
+                --length;
+            }
+            return -1;
+        }
+
         public void Dispose()
         {
             if (bucket != null)

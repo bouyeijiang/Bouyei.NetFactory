@@ -22,17 +22,33 @@ namespace Bouyei.NetProviderFactory.Pools
         {
             if (period < 2) this.period = 2;
             else this.period = period;
-            int _period = (period * 1000) >> 1;
+
+            int _period = GetPeriodSeconds();
             list = new LinkedList<NetConnectionToken>();
             timeoutThreading = new Timer(new TimerCallback(timeoutHandler), null, _period, _period);
+        }
+
+        private int GetPeriodSeconds()
+        {
+            return (period * 1000) >> 1;
+        }
+
+        public void TimerEnable(bool isContinue)
+        {
+            if (isContinue)
+            {
+                int _period = GetPeriodSeconds();
+                timeoutThreading.Change(_period, _period);
+            }
+            else timeoutThreading.Change(-1, -1);
         }
 
         public void TimeoutChange(int period)
         {
             this.period = period;
             if (period < 2) this.period = 2;
-            
-            int _p = (period * 1000) >> 1;
+
+            int _p = GetPeriodSeconds();
             timeoutThreading.Change(_p, _p);
         }
 

@@ -13,18 +13,18 @@ namespace Bouyei.NetProviderFactory.Udp
         private EndPoint serverIpEndPoint = null;
         private int bufferSizeByConnection = 4096;
         private int maxNumberOfConnections = 64;
-        private byte[] receiveBuffer = null;
+        private byte[] cliRecBuffer = null;
         private bool isConnected = false;
-        private ManualResetEvent mReset = new ManualResetEvent(false);
-        private SocketTokenManager<SocketAsyncEventArgs> sendPool = null;
-        private SocketBufferManager sendBuffer = null;
+        private Socket cliSocket = null;
 
-        private Socket clientSocket = null;
+        private ManualResetEvent mReset = new ManualResetEvent(false);
+        private SocketTokenManager<SocketAsyncEventArgs> sendTokenManager = null;
+        private SocketBufferManager sendBufferManager = null;
 
         #endregion
 
         #region 属性
-        public int SendBufferPoolNumber { get { return sendPool.Count; } }
+        public int SendBufferPoolNumber { get { return sendTokenManager.Count; } }
 
         /// <summary>
         /// 接收回调处理
@@ -56,11 +56,11 @@ namespace Bouyei.NetProviderFactory.Udp
             {
                 DisposeSocketPool();
 
-                if (clientSocket != null)
+                if (cliSocket != null)
                 {
-                    clientSocket.Shutdown(SocketShutdown.Both);
-                    clientSocket.Close();
-                    clientSocket.Dispose();
+                    cliSocket.Shutdown(SocketShutdown.Both);
+                    cliSocket.Close();
+                    cliSocket.Dispose();
                 }
                 _isDisposed = true;
             }
@@ -68,17 +68,17 @@ namespace Bouyei.NetProviderFactory.Udp
 
         private void DisposeSocketPool()
         {
-            if (sendPool != null)
+            if (sendTokenManager != null)
             {
-                while (sendPool.Count > 0)
+                while (sendTokenManager.Count > 0)
                 {
-                    var item = sendPool.Get();
+                    var item = sendTokenManager.Get();
                     if (item != null) item.Dispose();
                 }
             }
-            if (sendBuffer != null)
+            if (sendBufferManager != null)
             {
-                sendBuffer.Clear();
+                sendBufferManager.Clear();
             }
         }
 
@@ -89,7 +89,7 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             this.maxNumberOfConnections = maxNumberOfConnections;
             this.bufferSizeByConnection = bufferSizeByConnection;
-            receiveBuffer = new byte[bufferSizeByConnection];
+            cliRecBuffer = new byte[bufferSizeByConnection];
             Initialize();
         }
 
@@ -110,8 +110,8 @@ namespace Bouyei.NetProviderFactory.Udp
             Close();
 
             serverIpEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
-            clientSocket = new Socket(serverIpEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-            clientSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
+            cliSocket = new Socket(serverIpEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            cliSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
 
             int retry = 3;
             again:
@@ -120,11 +120,11 @@ namespace Bouyei.NetProviderFactory.Udp
                 //探测是否有效连接
                 SocketAsyncEventArgs sArgs = new SocketAsyncEventArgs();
                 sArgs.Completed += IO_Completed;
-                sArgs.UserToken = clientSocket;
+                sArgs.UserToken = cliSocket;
                 sArgs.RemoteEndPoint = serverIpEndPoint;
                 sArgs.SetBuffer(new byte[] { 0 }, 0, 1);
 
-                bool rt = clientSocket.SendToAsync(sArgs);
+                bool rt = cliSocket.SendToAsync(sArgs);
                 if (rt)
                 {
                     StartReceive();
@@ -150,34 +150,38 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="buffer"></param>
         /// <param name="offset"></param>
         /// <param name="size"></param>
-        /// <param name="waitingSignal"></param>
-        public void Send(byte[] buffer, int offset, int size, bool waitingSignal = true)
+        /// <param name="isWaiting"></param>
+        public void Send(byte[] buffer, int offset, int size, bool isWaiting = true)
         {
-            SocketAsyncEventArgs tArgs = sendPool.Get();
-            if (tArgs == null)
+            ArraySegment<byte>[] segItems = sendBufferManager.BufferToSegments(buffer, offset, size);
+            foreach (var seg in segItems)
             {
-                while (waitingSignal)
+                SocketAsyncEventArgs tArgs = sendTokenManager.Get();
+                if (tArgs == null)
                 {
-                    Thread.Sleep(1000);
-                    tArgs = sendPool.Get();
-                    if (tArgs != null) break;
+                    while (isWaiting)
+                    {
+                        Thread.Sleep(1000);
+                        tArgs = sendTokenManager.Get();
+                        if (tArgs != null) break;
+                    }
                 }
-            }
-            if (tArgs == null)
-                throw new Exception("发送缓冲池已用完,等待回收...");
+                if (tArgs == null)
+                    throw new Exception("发送缓冲池已用完,等待回收...");
 
-            tArgs.RemoteEndPoint = serverIpEndPoint;
+                tArgs.RemoteEndPoint = serverIpEndPoint;
 
-            if (!sendBuffer.WriteBuffer(tArgs, buffer, offset, size))
-            {
-                sendPool.Set(tArgs);
+                if (!sendBufferManager.WriteBuffer(tArgs, seg.Array, seg.Offset, seg.Count))
+                {
+                    sendTokenManager.Set(tArgs);
 
-                throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBuffer.BlockSize));
-            }
+                    throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBufferManager.BlockSize));
+                }
 
-            if (!clientSocket.SendToAsync(tArgs))
-            {
-                ProcessSent(tArgs);
+                if (!cliSocket.SendToAsync(tArgs))
+                {
+                    ProcessSent(tArgs);
+                }
             }
         }
 
@@ -190,12 +194,12 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <returns></returns>
         public int SendSync(byte[] buffer, Action<int, byte[]> recAct = null, int recBufferSize = 4096)
         {
-            int sent = clientSocket.SendTo(buffer, serverIpEndPoint);
+            int sent = cliSocket.SendTo(buffer, serverIpEndPoint);
             if (recAct != null && sent > 0)
             {
                 byte[] recBuffer = new byte[recBufferSize];
 
-                int cnt = clientSocket.ReceiveFrom(recBuffer,
+                int cnt = cliSocket.ReceiveFrom(recBuffer,
                     recBuffer.Length,
                     SocketFlags.None,
                     ref serverIpEndPoint);
@@ -216,7 +220,7 @@ namespace Bouyei.NetProviderFactory.Udp
             byte[] buffer = new byte[recBufferSize];
             do
             {
-                cnt = clientSocket.ReceiveFrom(buffer,
+                cnt = cliSocket.ReceiveFrom(buffer,
                     buffer.Length,
                     SocketFlags.None,
                     ref serverIpEndPoint);
@@ -235,10 +239,10 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             SocketAsyncEventArgs sArgs = new SocketAsyncEventArgs();
             sArgs.Completed += IO_Completed;
-            sArgs.UserToken = clientSocket;
+            sArgs.UserToken = cliSocket;
             sArgs.RemoteEndPoint = serverIpEndPoint;
-            sArgs.SetBuffer(receiveBuffer, 0, bufferSizeByConnection);
-            if (!clientSocket.ReceiveFromAsync(sArgs))
+            sArgs.SetBuffer(cliRecBuffer, 0, bufferSizeByConnection);
+            if (!cliSocket.ReceiveFromAsync(sArgs))
             {
                 ProcessReceive(sArgs);
             }
@@ -254,27 +258,27 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="port"></param>
         private void Initialize()
         {
-            sendPool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
-            sendBuffer = new SocketBufferManager(maxNumberOfConnections, bufferSizeByConnection);
+            sendTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
+            sendBufferManager = new SocketBufferManager(maxNumberOfConnections, bufferSizeByConnection);
 
             //初始化发送接收对象池
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
                 SocketAsyncEventArgs sendArgs = new SocketAsyncEventArgs();
                 sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-                sendArgs.UserToken = clientSocket;
-                sendBuffer.SetBuffer(sendArgs);
-                sendPool.Set(sendArgs);
+                sendArgs.UserToken = cliSocket;
+                sendBufferManager.SetBuffer(sendArgs);
+                sendTokenManager.Set(sendArgs);
             }
         }
 
         private void Close()
         {
-            if (clientSocket != null)
+            if (cliSocket != null)
             {
-                clientSocket.Shutdown(SocketShutdown.Both);
-                clientSocket.Close();
-                clientSocket.Dispose();
+                cliSocket.Shutdown(SocketShutdown.Both);
+                cliSocket.Close();
+                cliSocket.Dispose();
             }
         }
 
@@ -336,8 +340,6 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             try
             {
-                sendPool.Set(e);
-
                 isConnected = e.SocketError == SocketError.Success;
 
                 if (SentCallbackHandler != null && isClientRequest(e)==false)
@@ -353,6 +355,10 @@ namespace Bouyei.NetProviderFactory.Udp
             catch (Exception ex)
             {
                 throw ex;
+            }
+            finally
+            {
+                sendTokenManager.Set(e);
             }
         }
 

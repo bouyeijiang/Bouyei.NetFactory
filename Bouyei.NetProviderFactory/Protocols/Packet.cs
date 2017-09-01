@@ -69,7 +69,7 @@ namespace Bouyei.NetProviderFactory.Protocols
 
             uint plen= dst.ToUInt32(5);
 
-            if (plen >= size - 11)
+            if (plen >= size -9)
                 return false;
 
             if (pHeader == null)
@@ -99,11 +99,11 @@ namespace Bouyei.NetProviderFactory.Protocols
         private unsafe byte[] Escape(byte[] buffer)
         {
            var tCnt = CheckEscapeFlagBitCount(buffer);
-            if ((tCnt.pkgFlag + tCnt.subFlag) == 0) return buffer;
+            if ((tCnt.Item1 + tCnt.Item2) == 0) return buffer;
 
             int plen = buffer.Length - 2;
 
-            byte[] rBuffer = new byte[buffer.Length + tCnt.pkgFlag + tCnt.subFlag];
+            byte[] rBuffer = new byte[buffer.Length + tCnt.Item1 + tCnt.Item2];
             rBuffer[0] = buffer[0];//起始标识位
 
             fixed (byte* dst = &(rBuffer[1]), src = &(buffer[1]))
@@ -152,19 +152,16 @@ namespace Bouyei.NetProviderFactory.Protocols
         private unsafe byte[] Restore(byte[] buffer, int offset, int size)
         {
             var tCnt = CheckRestoreFlagBitCount(buffer,  offset, size);
-            if ((tCnt.subCnt+tCnt.pkgCnt) == 0)
+            if ((tCnt.Item1 + tCnt.Item2) == 0)
             {
-                if (buffer.Length == size) return buffer;
-                else
-                {
-                    byte[] buff = new byte[size];
-                    Buffer.BlockCopy(buff, offset, buff, 0, size);
-                    return buff;
-                }
+
+                byte[] buff = new byte[size-2];
+                Buffer.BlockCopy(buffer, offset+1, buff, 0, buff.Length);
+                return buff;
             }
 
             int pLen = size - 2;//去掉标志位后的长度
-            byte[] rBuffer = new byte[pLen - tCnt.pkgCnt - tCnt.subCnt];
+            byte[] rBuffer = new byte[pLen - tCnt.Item1 - tCnt.Item2];
 
             fixed (byte* dst = rBuffer, src = &(buffer[offset + 1]))
             {
@@ -211,7 +208,7 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <param name="buffer"></param>
         /// <param name="flag"></param>
         /// <returns></returns>
-        private unsafe (int pkgFlag,int subFlag) CheckEscapeFlagBitCount(byte[] buffer)
+        private unsafe Tuple<int, int> CheckEscapeFlagBitCount(byte[] buffer)
         {
             int len = buffer.Length - 2;//去头尾标识位
             int pktCnt = 0, subCnt = 0;
@@ -232,7 +229,7 @@ namespace Bouyei.NetProviderFactory.Protocols
                     --len;
                 } while (len > 0);
             }
-            return (pktCnt, subCnt);
+            return Tuple.Create(pktCnt, subCnt);
         }
 
         /// <summary>
@@ -243,7 +240,7 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <param name="offset"></param>
         /// <param name="size"></param>
         /// <returns></returns>
-        private unsafe (int pkgCnt,int subCnt) CheckRestoreFlagBitCount(byte[] buffer, int offset, int size)
+        private unsafe Tuple<int, int> CheckRestoreFlagBitCount(byte[] buffer, int offset, int size)
         {
             int len = size - 2;
             int i = offset + 1, pkgCnt = 0, subCnt = 0;
@@ -271,7 +268,7 @@ namespace Bouyei.NetProviderFactory.Protocols
                     }
                 } while (len > 0);
             }
-            return (pkgCnt, subCnt);
+            return Tuple.Create(pkgCnt, subCnt);
         }
         #endregion
     }

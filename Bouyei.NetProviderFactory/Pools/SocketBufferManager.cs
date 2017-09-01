@@ -7,17 +7,17 @@ namespace Bouyei.NetProviderFactory
 {
     internal class SocketBufferManager
     {
-        int totalSize;
-        int curIndex;
-        int blockSize = 2048;
-        int used = 0;
-        byte[] buffer;
-        Queue<int> freeBufferIndexPool;
+        int wTotalSize=0;
+        int wCurIndex=0;
+        int wBlockSize = 2048;
+        int wUsed = 0;
+        byte[] wBuffer=null;
+        Queue<int> freeBufferIndexPool=null;
 
         /// <summary>
         /// 块缓冲区大小
         /// </summary>
-        public int BlockSize { get { return blockSize; } }
+        public int BlockSize { get { return wBlockSize; } }
 
         /// <summary>
         /// 缓冲区管理构造
@@ -28,10 +28,10 @@ namespace Bouyei.NetProviderFactory
         {
             if (blockSize < 4) blockSize = 4;
 
-            this.blockSize = blockSize;
-            this.curIndex = 0;
-            totalSize = maxCounts * blockSize;
-            buffer = new byte[totalSize];
+            this.wBlockSize = blockSize;
+            this.wCurIndex = 0;
+            wTotalSize = maxCounts * blockSize;
+            wBuffer = new byte[wTotalSize];
             freeBufferIndexPool = new Queue<int>(maxCounts);
         }
 
@@ -47,7 +47,7 @@ namespace Bouyei.NetProviderFactory
         /// <returns></returns>
         public bool SetBuffer(SocketAsyncEventArgs agrs)
         {
-            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
+            while (Interlocked.CompareExchange(ref wUsed, 0, 1) != 0)
             {
                 Thread.Sleep(1);
             }
@@ -55,23 +55,23 @@ namespace Bouyei.NetProviderFactory
             {
                 if (freeBufferIndexPool.Count > 0)
                 {
-                    agrs.SetBuffer(this.buffer,
+                    agrs.SetBuffer(this.wBuffer,
                         this.freeBufferIndexPool.Dequeue(),
-                        blockSize);
+                        wBlockSize);
                 }
                 else
                 {
-                    if ((totalSize - blockSize) < curIndex) return false;
+                    if ((wTotalSize - wBlockSize) < wCurIndex) return false;
 
-                    agrs.SetBuffer(this.buffer, this.curIndex, this.blockSize);
+                    agrs.SetBuffer(this.wBuffer, this.wCurIndex, this.wBlockSize);
 
-                    this.curIndex += this.blockSize;
+                    this.wCurIndex += this.wBlockSize;
                 }
                 return true;
             }
             finally
             {
-                Interlocked.Exchange(ref used, 0);
+                Interlocked.Exchange(ref wUsed, 0);
             }
         }
 
@@ -79,36 +79,36 @@ namespace Bouyei.NetProviderFactory
         /// 写入缓冲区
         /// </summary>
         /// <param name="agrs"></param>
-        /// <param name="data"></param>
+        /// <param name="buffer"></param>
         /// <param name="offset"></param>
         /// <param name="cnt"></param>
         /// <returns></returns>
-        public bool WriteBuffer(SocketAsyncEventArgs agrs, byte[] data,int offset,int cnt)
+        public bool WriteBuffer(SocketAsyncEventArgs agrs, byte[] buffer,int offset,int cnt)
         {
-            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
+            while (Interlocked.CompareExchange(ref wUsed, 0, 1) != 0)
             {
                 Thread.Sleep(1);
             }
             try
             {
                 //超出缓冲区则不写入
-                if (agrs.Offset + cnt > this.buffer.Length)
+                if (agrs.Offset + cnt > this.wBuffer.Length)
                 {
                     return false;
                 }
 
                 //超出块缓冲区则不写入
-                if (cnt > blockSize) return false;
+                if (cnt > wBlockSize) return false;
 
-                Buffer.BlockCopy(data, offset, this.buffer, agrs.Offset, cnt);
+                Buffer.BlockCopy(buffer, offset, this.wBuffer, agrs.Offset, cnt);
 
-                agrs.SetBuffer(this.buffer, agrs.Offset, cnt);
+                agrs.SetBuffer(this.wBuffer, agrs.Offset, cnt);
 
                 return true;
             }
             finally
             {
-                Interlocked.Exchange(ref used, 0);
+                Interlocked.Exchange(ref wUsed, 0);
             }
         }
 
@@ -118,7 +118,7 @@ namespace Bouyei.NetProviderFactory
         /// <param name="args"></param>
         public void FreeBuffer(SocketAsyncEventArgs args)
         {
-            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
+            while (Interlocked.CompareExchange(ref wUsed, 0, 1) != 0)
             {
                 Thread.Sleep(1);
             }
@@ -129,8 +129,43 @@ namespace Bouyei.NetProviderFactory
             }
             finally
             {
-                Interlocked.Exchange(ref used, 0);
+                Interlocked.Exchange(ref wUsed, 0);
             }
+        }
+
+        /// <summary>
+        /// 自动按发送缓冲区的块大小分多次包
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="offset"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
+        public ArraySegment<byte>[] BufferToSegments(byte[] buffer, int offset, int size)
+        {
+            if (size <= wBlockSize) return new ArraySegment<byte>[] { new ArraySegment<byte>(buffer, offset, size) };
+
+            int bSize = wBlockSize;
+            int bCnt = size / wBlockSize;
+            int bOffset = 0;
+            bool isRem = false;
+            if (size % wBlockSize != 0)
+            {
+                isRem = true;
+                bCnt += 1;
+            }
+
+            ArraySegment<byte>[] segItems = new ArraySegment<byte>[bCnt];
+            for (int i = 0; i < bCnt; ++i)
+            {
+                bOffset = i * wBlockSize;
+
+                if (i == (bCnt - 1) && isRem)
+                {
+                    bSize = size - bOffset;
+                }
+                segItems[i] = new ArraySegment<byte>(buffer, offset + bOffset, bSize);
+            }
+            return segItems;
         }
     }
 }

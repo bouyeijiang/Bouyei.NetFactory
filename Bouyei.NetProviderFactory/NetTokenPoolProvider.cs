@@ -29,6 +29,11 @@ namespace Bouyei.NetProviderFactory
             tokenConnectionManager = new TokenConnectionManager(taskExecutePeriod);
         }
 
+        public void TimerEnable(bool isContinue)
+        {
+            tokenConnectionManager.TimerEnable(isContinue);
+        }
+
         public void AddToken(NetConnectionToken ncToken)
         {
             tokenConnectionManager.AddToken(ncToken);

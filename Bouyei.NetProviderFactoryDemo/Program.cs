@@ -17,8 +17,8 @@ namespace Bouyei.NetProviderFactoryDemo
         {
             //ProtocolsDemo();
             //UdpDemo();
-            //TcpDemo();
-            ConnectionPoolManagerDemo();
+            TcpDemo();
+            //ConnectionPoolManagerDemo();
         }
 
         private static void TcpDemo()
@@ -26,9 +26,9 @@ namespace Bouyei.NetProviderFactoryDemo
             int port = 13145;
             int svc_send_cnt = 0, svc_rec_cnt = 0, client_send_cnt = 0, client_rec_cnt = 0;
             //服务端
-            NetServerProvider serverSocket = NetServerProvider.CreateProvider();
+            INetServerProvider serverSocket = NetServerProvider.CreateProvider();
 
-            byte[] sendbuffer = new byte[2048];
+            byte[] sendbuffer = new byte[128];
             for (int i = 0; i < sendbuffer.Length; ++i)
             {
                 sendbuffer[i] = (byte)(i > 255 ? 255 : i);
@@ -82,22 +82,26 @@ namespace Bouyei.NetProviderFactoryDemo
                 Console.WriteLine("已启动服务。。。");
 
                 //客户端
-                NetClientProvider clientSocket = NetClientProvider.CreateProvider();
+                INetClientProvider clientSocket = NetClientProvider.CreateProvider();
                 clientSocket.SentHanlder = new OnSentHandler((stoken, buff,offset,cont) =>
                 {
                     client_send_cnt += 1;
                 });
+                INetPacketProvider pkgProvider = NetPacketProvider.CreateProvider(128 * 64);
                 //异步连接
                 clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
                 {
                     try
                     {
-                        Packet pkg = protocolProvider.Decode(buff, offset, count);
+                        pkgProvider.SetBlock(buff, offset, count);
+                        var pkgs = pkgProvider.GetBlocks();
+                        svc_send_cnt += pkgs.Count;
+                        if (pkgs.Count == 0)
+                        {
 
-                        if (pkg.pPayload.Length == pkg.pHeader.packetAttribute.payloadLength)
-                            client_rec_cnt += 1;
+                        }
                     }
-                    catch(Exception ex)
+                    catch (Exception ex)
                     {
 
                     }
@@ -109,16 +113,17 @@ namespace Bouyei.NetProviderFactoryDemo
                 bool rt = clientSocket.ConnectTo(port, "127.0.0.1");
                 if (rt)
                 {
-                    for (int i = 0; i < 100000; i++)
+                    for (int i = 0; i < 10000; i++)
                     {
                         if (i % 100 == 0)
                         {
                             Console.WriteLine(clientSocket.SendBufferNumber + ":" + i);
                             Console.WriteLine(string.Format("svc[send:{0},rec:{1}],client[send{2},rec:{3}]", svc_send_cnt, svc_rec_cnt, client_send_cnt, client_rec_cnt));
                         }
-                        clientSocket.Send(sendbuffer);
+                        clientSocket.Send(sendbuffer,false);
                     }
                     Console.WriteLine("complete");
+                    Console.ReadKey();
                     clientSocket.Dispose();
                 }
             }

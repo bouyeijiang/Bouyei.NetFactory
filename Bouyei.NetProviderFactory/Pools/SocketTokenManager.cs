@@ -85,5 +85,28 @@ namespace Bouyei.NetProviderFactory
                 Interlocked.Exchange(ref used, 0);
             }
         }
+
+        /// <summary>
+        /// 如果队列为空则等待
+        /// </summary>
+        /// <param name="isWaitingFor">如果为false则在指定时间超时后返回</param>
+        /// <returns></returns>
+        public T GetEmptyWait(bool isWaitingFor=true)
+        {
+            int retry = 1;
+
+            while (true)
+            {
+                var tArgs = Get();
+                if (tArgs != null) return tArgs;
+                if (isWaitingFor == false)
+                {
+                    if (retry > 16) break;
+                    ++retry;
+                }
+                Thread.Sleep(1000 * retry);
+            }
+            return default(T);
+        }
     }
 }
