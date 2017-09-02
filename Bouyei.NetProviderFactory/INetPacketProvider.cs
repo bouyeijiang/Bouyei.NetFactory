@@ -10,7 +10,8 @@ namespace Bouyei.NetProviderFactory
 
     public interface INetPacketProvider
     {
-        bool SetBlock(byte[] buffer, int offset, int size);
+        int Count { get; }
+        bool SetBlocks(byte[] buffer, int offset, int size);
 
         List<Packet> GetBlocks();
     }

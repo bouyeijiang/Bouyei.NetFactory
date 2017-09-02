@@ -137,13 +137,15 @@ namespace Bouyei.NetProviderFactory.Pools
         public NetConnectionToken(SocketToken sToken)
         {
             this.Token = sToken;
+            Verification = true;
+            ConnectionTime = DateTime.Now;//兼容低版本语法
         }
 
         public SocketToken Token { get; set; }
 
-        public DateTime ConnectionTime { get; set; } = DateTime.Now;
+        public DateTime ConnectionTime { get; set; }
 
-        public bool Verification { get; set; } = true;
+        public bool Verification { get; set; }
 
         public int CompareTo(NetConnectionToken item)
         {

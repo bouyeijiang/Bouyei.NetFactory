@@ -28,7 +28,7 @@ namespace Bouyei.NetProviderFactoryDemo
             //服务端
             INetServerProvider serverSocket = NetServerProvider.CreateProvider();
 
-            byte[] sendbuffer = new byte[128];
+            byte[] sendbuffer = new byte[16];
             for (int i = 0; i < sendbuffer.Length; ++i)
             {
                 sendbuffer[i] = (byte)(i > 255 ? 255 : i);
@@ -87,18 +87,29 @@ namespace Bouyei.NetProviderFactoryDemo
                 {
                     client_send_cnt += 1;
                 });
-                INetPacketProvider pkgProvider = NetPacketProvider.CreateProvider(128 * 64);
+                INetPacketProvider pkgProvider = NetPacketProvider.CreateProvider(4096);
+                int exactPkgCnt = 0,failePkgCnt=0;
                 //异步连接
                 clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
                 {
                     try
                     {
-                        pkgProvider.SetBlock(buff, offset, count);
-                        var pkgs = pkgProvider.GetBlocks();
-                        svc_send_cnt += pkgs.Count;
-                        if (pkgs.Count == 0)
+                       bool isIn= pkgProvider.SetBlocks(buff, offset, count);
+                        if (isIn == false)
                         {
 
+                        }
+                        if (pkgProvider.Count > 0)
+                        {
+                            var pkgs = pkgProvider.GetBlocks();
+                            if (pkgs.Count > 0)
+                            {
+                                exactPkgCnt += pkgs.Count;
+                            }
+                            else
+                            {
+                                ++failePkgCnt;
+                            }
                         }
                     }
                     catch (Exception ex)

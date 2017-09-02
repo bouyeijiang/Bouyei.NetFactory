@@ -12,15 +12,10 @@ namespace Bouyei.NetProviderFactory.Protocols
         int capacity = 4;
         int head = 0;
         int tail = 0;
-        int length = 0;
 
-        public int Length { get { return length; } }
+        public int Length { get { return GetLength(); } }
 
         public int Capacity { get { return capacity; } }
-
-        public int Tail { get { return tail; } }
-
-        public int Head { get { return head; } }
 
         public T[] Array { get { return bucket; } }
 
@@ -31,40 +26,26 @@ namespace Bouyei.NetProviderFactory.Protocols
             bucket = new T[capacity];
         }
 
-        public T this[int index]
-        {
-            get
-            {
-                if (IsEmpty()
-                    || (index < head || index > tail))
-                    return default(T);
-                else
-                    return bucket[index];
-            }
-            set
-            {
-                if (IsEmpty() == false
-                    && (index >= head && index <= tail))
-                    bucket[index] = value;
-            }
-        }
-
         public void Clear()
         {
             head = tail = 0;
-            length = 0;
+        }
+
+        private int GetLength()
+        {
+            return (tail - head + capacity) % capacity;
         }
 
         public bool IsEmpty ()
         {
-            //return tail == head;
-            return length == 0;
+            return tail == head;
+            //return length == 0;
         }
 
         public bool IsFull()
         {
-           // return (tail + 1) % capacity == head;
-            return length == capacity;
+            return (tail + 1) % capacity == head;
+            //return length == capacity;
         }
 
         public bool EnQueue(T value)
@@ -72,7 +53,6 @@ namespace Bouyei.NetProviderFactory.Protocols
             if (IsFull()) return false;
             bucket[tail] = value;
             tail = (tail+1) % capacity;
-            ++length;
             return true;
         }
 
@@ -81,20 +61,63 @@ namespace Bouyei.NetProviderFactory.Protocols
             if (IsEmpty()) return default(T);
             T v = bucket[head];
             head = (head+1) % capacity;
-            --length;
             return v;
         }
 
-        public int TakeHeadIndex(T value)
+        public T[] DeRange(int size)
         {
-            while (length > 0)
+            if (size > Length) return null;
+            T[] array = new T[size];
+            int index = 0;
+            while (size > 0)
+            {
+                if (IsEmpty()) return null;
+
+                array[index] = bucket[head];
+                head = (head + 1) % capacity;
+                --size;
+                ++index;
+            }
+            return array;
+        }
+
+        public void Clear(int size)
+        {
+            int len = size <= Length ? size : Length;
+
+            while (len > 0)
+            {
+                if (IsEmpty()) break;
+
+                head = (head + 1) % capacity;
+                --len;
+            }
+        }
+
+        public int DeSearchIndex(T value,int offset)
+        {
+            if (offset > Length) return -1;
+
+            if (offset > 0)
+            {
+                head = (head + offset) % capacity;
+            }
+            while (Length > 0)
             {
                 if (IsEmpty()) return -1;
                 if (value.Equals(bucket[head])) return head;
 
                 head = (head + 1) % capacity;
-                --length;
             }
+            return -1;
+        }
+
+        public int PeekIndex(T value, int offset)
+        {
+            if (offset > Length) return -1;
+
+            int _h = (head + offset) % capacity;
+            if (bucket[_h].Equals(value)) return _h;
             return -1;
         }
 

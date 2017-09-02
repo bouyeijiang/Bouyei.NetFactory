@@ -16,6 +16,7 @@ namespace Bouyei.NetProviderFactory
         public NetPacketProvider(int capacity)
         {
             if (capacity < 128) capacity = 128;
+            capacity += 1;
             packetQueue = new PacketQueue(capacity);
         }
 
@@ -24,8 +25,17 @@ namespace Bouyei.NetProviderFactory
             return new NetPacketProvider(capacity);
         }
 
-        public bool SetBlock(byte[] bufffer,int offset,int size)
+        public int Count
         {
+            get
+            {
+                return packetQueue.Count;
+            }
+        }
+
+        public bool SetBlocks(byte[] bufffer,int offset,int size)
+        {
+          
             lock (lockObject)
             {
                 return packetQueue.SetBlock(bufffer, offset, size);
