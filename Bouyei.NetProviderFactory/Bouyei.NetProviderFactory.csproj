@@ -71,6 +71,7 @@
     <Compile Include="Udp\SocketSend.cs" />
     <Compile Include="Udp\UdpClientProvider.cs" />
     <Compile Include="Udp\UdpServerProvider.cs" />
+    <Compile Include="Utils.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

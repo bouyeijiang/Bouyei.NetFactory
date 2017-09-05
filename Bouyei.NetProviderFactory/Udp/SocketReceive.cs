@@ -8,9 +8,9 @@ namespace Bouyei.NetProviderFactory.Udp
     {
         #region variable
         private Socket recSocket = null;
-        private SocketAsyncEventArgs socketArgs = null;
+        private SocketAsyncEventArgs recArgs = null;
         private byte[] recBuffer = null;
-        private bool isClose = false;
+        private bool isStoped = false;
         private bool _isDisposed = false;
 
         /// <summary>
@@ -48,11 +48,10 @@ namespace Bouyei.NetProviderFactory.Udp
 
             if (isDisposing)
             {
-                isClose = true;
-                recSocket.Dispose();
-                socketArgs.Dispose();
-                DisposeSocketPool();
+                isStoped = true;
                 _isDisposed = true;
+                Utils.SafeCloseSocket(recSocket);
+                recArgs.Dispose();
             }
         }
         #endregion
@@ -60,25 +59,13 @@ namespace Bouyei.NetProviderFactory.Udp
         #region public
         public void Initialize(int maxNumberOfConnections, int bufferSize = 4096)
         {
-            //receiveBufferPool = new SocketBufferManager(maxNumberOfConnections, bufferSize);
-            //receivePool = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
-            socketArgs = new SocketAsyncEventArgs();
+            recArgs = new SocketAsyncEventArgs();
 
-            socketArgs.UserToken = recSocket;
-            socketArgs.RemoteEndPoint = recSocket.LocalEndPoint;
-            socketArgs.Completed += SocketArgs_Completed;
+            recArgs.UserToken = recSocket;
+            recArgs.RemoteEndPoint = recSocket.LocalEndPoint;
+            recArgs.Completed += SocketArgs_Completed;
             recBuffer = new byte[bufferSize];
-            socketArgs.SetBuffer(recBuffer, 0, bufferSize);
-
-            //for (int i = 0; i < maxNumberOfConnections; ++i)
-            //{
-            //    SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs();
-            //    socketArgs.UserToken = receiveSocket;
-            //    socketArgs.RemoteEndPoint = receiveSocket.LocalEndPoint;
-            //    socketArgs.Completed += SocketArgs_Completed;
-            //    receiveBufferPool.SetBuffer(socketArgs);
-            //    receivePool.Set(socketArgs);
-            //}
+            recArgs.SetBuffer(recBuffer, 0, bufferSize);
         }
 
         /// <summary>
@@ -86,20 +73,11 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         public void StartReceive()
         {
-            bool rt = recSocket.ReceiveFromAsync(socketArgs);
+            bool rt = recSocket.ReceiveFromAsync(recArgs);
             if (rt == false)
             {
-                ProcessReceive(socketArgs);
+                ProcessReceive(recArgs);
             }
-
-            //SocketAsyncEventArgs arg = receivePool.Get();
-            //Socket s = arg.UserToken as Socket;
-            //isClose = false;
-
-            //if (!s.ReceiveFromAsync(arg))
-            //{
-            //    ProcessReceive(arg);
-            //}
         }
 
         /// <summary>
@@ -107,31 +85,16 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         public void StopReceive()
         {
-            isClose = true;
-            if (recSocket != null)
+            isStoped = true;
+            Utils.SafeCloseSocket(recSocket);
+            if (recArgs != null)
             {
-                recSocket.Shutdown(SocketShutdown.Both);
-                recSocket.Close();
+                recArgs.Dispose();
             }
         }
         #endregion
 
         #region private
-        private void DisposeSocketPool()
-        {
-            //if (receivePool != null)
-            //{
-            //    while (receivePool.Count > 0)
-            //    {
-            //        var item = receivePool.Get();
-            //        if (item != null) item.Dispose();
-            //    }
-            //}
-            //if (receiveBufferPool != null)
-            //{
-            //    receiveBufferPool.Clear();
-            //}
-        }
 
         /// <summary>
         /// 接收完成事件
@@ -167,7 +130,7 @@ namespace Bouyei.NetProviderFactory.Udp
                 }
             }
 
-            if (isClose) return;
+            if (isStoped) return;
 
             StartReceive();
         }

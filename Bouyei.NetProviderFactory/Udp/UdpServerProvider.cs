@@ -6,14 +6,14 @@ namespace Bouyei.NetProviderFactory.Udp
 {
     public class UdpServerProvider : IDisposable
     {
-        #region 变量定义
+        #region variable
         private SocketReceive socketRecieve = null;
         private SocketSend socketSend = null;
         private bool _isDisposed = false;
 
         #endregion
 
-        #region 属性
+        #region property
 
         public OnReceiveOffsetHandler ReceiveOffsetHanlder { get; set; }
 
@@ -90,7 +90,7 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             if (socketSend != null)
             {
-                socketSend = null;
+                socketSend.Dispose();
             }
             if (socketRecieve != null)
             {

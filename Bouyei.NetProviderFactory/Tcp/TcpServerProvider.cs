@@ -8,14 +8,14 @@ namespace Bouyei.NetProviderFactory.Tcp
     public class TcpServerProvider : IDisposable
     {
         #region variable
-        private bool stoped = true;
+        private bool isStoped = true;
         private bool _isDisposed = false;
         private int numberOfConnections = 0;
         private int maxNumberOfConnections = 32;
 
         private Semaphore maxNumberAcceptedClients = null;
         private Socket svcSocket = null;
-        private SocketTokenManager<SocketAsyncEventArgs> sentTokenManager = null;
+        private SocketTokenManager<SocketAsyncEventArgs> sendTokenManager = null;
         private SocketTokenManager<SocketAsyncEventArgs> acceptTokenManager = null;
         private SocketBufferManager recvBufferManager = null;
         private SocketBufferManager sendBufferManager = null;
@@ -71,27 +71,19 @@ namespace Bouyei.NetProviderFactory.Tcp
 
             if (isDisposing)
             {
-                maxNumberAcceptedClients.Dispose();
                 DisposeSocketPool();
                 svcSocket.Dispose();
                 recvBufferManager.Clear();
                 sendBufferManager.Clear();
                 _isDisposed = true;
+                maxNumberAcceptedClients.Dispose();
             }
         }
 
         private void DisposeSocketPool()
         {
-            while (sentTokenManager.Count > 0)
-            {
-                var item = sentTokenManager.Get();
-                if (item != null) item.Dispose();
-            }
-            while (acceptTokenManager.Count > 0)
-            {
-                var item = acceptTokenManager.Get();
-                if (item != null) item.Dispose();
-            }
+            sendTokenManager.ClearToCloseArgs();
+            acceptTokenManager.ClearToCloseArgs();
         }
 
         /// <summary>
@@ -110,7 +102,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
             //maxConnections = maxConnections >= 65536 ? (maxConnections >> 1) : maxConnections;
 
-            sentTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
+            sendTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
             sendBufferManager = new SocketBufferManager(maxConnections, chunkBufferSize);
         }
 
@@ -149,7 +141,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 svcSocket.Listen(10);
 
-                stoped = false;
+                isStoped = false;
 
                 StartAccept(null);
                 return true;
@@ -177,7 +169,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                stoped = true;
+                isStoped = true;
 
                 if (numberOfConnections > 0)
                 {
@@ -187,16 +179,11 @@ namespace Bouyei.NetProviderFactory.Tcp
                     numberOfConnections = 0;
                 }
 
-                if (svcSocket != null)
-                {
-                    svcSocket.Close();
-
-                    svcSocket.Dispose();
-                }
+               Utils.SafeCloseSocket(svcSocket);
             }
             catch (Exception ex)
             {
-                throw ex;
+                
             }
         }
 
@@ -211,7 +198,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 ArraySegment<byte>[] segItems = sendBufferManager.BufferToSegments(buffer, offset, size);
                 foreach (var seg in segItems)
                 {
-                    var tArgs = sentTokenManager.GetEmptyWait(isWaiting);
+                    var tArgs = sendTokenManager.GetEmptyWait(isWaiting);
 
                     if (tArgs == null)
                         throw new Exception("发送缓冲池已用完,等待回收超时...");
@@ -219,7 +206,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                     tArgs.UserToken = sToken;
                     if (!sendBufferManager.WriteBuffer(tArgs, seg.Array,seg.Offset, seg.Count))
                     {
-                        sentTokenManager.Set(tArgs);
+                        sendTokenManager.Set(tArgs);
 
                         throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBufferManager.BlockSize));
                     }
@@ -287,7 +274,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// </summary>
         private void InitializeSendPool()
         {
-            sentTokenManager.Clear();
+            sendTokenManager.Clear();
             SocketAsyncEventArgs args = null;
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
@@ -296,7 +283,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 args.UserToken = new SocketToken(i);
                 sendBufferManager.SetBuffer(args);
-                sentTokenManager.Set(args);
+                sendTokenManager.Set(args);
             }
         }
 
@@ -306,8 +293,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void StartAccept(SocketAsyncEventArgs e)
         {
-            if (stoped) return;
-            if (svcSocket == null) { stoped = true; return; }
+            if (isStoped ||svcSocket == null)
+            {
+                isStoped = true;
+                return;
+            }
             try
             {
                 if (e == null)
@@ -343,9 +333,9 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                if (stoped)
+                if (isStoped)
                 {
-                    Close(e);
+                    CloseToken(e);
                     return;
                 }
 
@@ -353,7 +343,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 SocketAsyncEventArgs tArgs = acceptTokenManager.Get();
                 if (maxNumberOfConnections == numberOfConnections || tArgs == null)
                 {
-                    Close(e);
+                    CloseToken(e);
 
                     throw new Exception("已经达到最大连接数");
                 }
@@ -380,7 +370,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 throw ex;
             }
 
-            if (stoped) return;
+            if (isStoped) return;
 
             //继续监听
             StartAccept(e);
@@ -395,9 +385,9 @@ namespace Bouyei.NetProviderFactory.Tcp
             SocketToken sToken = null;
             try
             {
-                if (stoped)
+                if (isStoped)
                 {
-                    Close(e);
+                    CloseToken(e);
                     return;
                 }
 
@@ -425,7 +415,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 }
                 else
                 {
-                   CloseClientSocket(sToken);
+                   CloseToken(sToken);
                 }
             }
             catch (Exception ex)
@@ -462,7 +452,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 }
                 else
                 {
-                    CloseClientSocket(sToken);  
+                    CloseToken(sToken);  
                 }
             }
             catch (Exception ex)
@@ -471,7 +461,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             finally
             {
-                sentTokenManager.Set(e);
+                sendTokenManager.Set(e);
             }
         }
 
@@ -504,7 +494,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// 内部使用的释放连接对象方法
         /// </summary>
         /// <param name="sToken"></param>
-        private void CloseClientSocket(SocketToken sToken)
+        private void CloseToken(SocketToken sToken)
         {
             try
             {
@@ -516,7 +506,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
         }
 
-        private void Close(SocketAsyncEventArgs e)
+        private void CloseToken(SocketAsyncEventArgs e)
         {
             try
             {

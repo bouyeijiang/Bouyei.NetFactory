@@ -9,10 +9,10 @@ namespace Bouyei.NetProviderFactory.Udp
     {
         #region variable
         private int maxCount = 0;
-        private int blocksize = 0;
-        private SocketTokenManager<SocketAsyncEventArgs> tokenPool = null;
-        private SocketBufferManager sentBufferPool = null;
-        private Socket sentSocket = null;
+        private int blockSize = 0;
+        private SocketTokenManager<SocketAsyncEventArgs> sendTokenManager = null;
+        private SocketBufferManager sendBufferManager = null;
+        private Socket sendSocket = null;
         private bool _isDisposed = false;
 
         #endregion
@@ -36,8 +36,8 @@ namespace Bouyei.NetProviderFactory.Udp
             if (isDisposing)
             {
                 DisposeSocketPool();
-                sentSocket.Dispose();
-                sentBufferPool.Clear();
+                sendSocket.Dispose();
+                sendBufferManager.Clear();
                 _isDisposed = true;
             }
         }
@@ -50,7 +50,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="maxCountClient">客户端最大数</param>
         public SocketSend()
         {
-            sentSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            sendSocket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         }
 
         /// <summary>
@@ -61,17 +61,19 @@ namespace Bouyei.NetProviderFactory.Udp
         public void Initialize(int maxCountClient, int blockSize = 4096)
         {
             this.maxCount = maxCountClient;
-            this.blocksize = blockSize;
-            tokenPool = new SocketTokenManager<SocketAsyncEventArgs>(maxCountClient);
-            sentBufferPool = new SocketBufferManager(maxCountClient, blockSize);
+            this.blockSize = blockSize;
+            sendTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxCountClient);
+            sendBufferManager = new SocketBufferManager(maxCountClient, blockSize);
 
             for (int i = 0; i < maxCount; ++i)
             {
-                SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs();
-                socketArgs.UserToken = sentSocket;
+                SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs
+                {
+                    UserToken = sendSocket
+                };
                 socketArgs.Completed += new EventHandler<SocketAsyncEventArgs>(ClientSocket_Completed);
-                sentBufferPool.SetBuffer(socketArgs);
-                tokenPool.Set(socketArgs);
+                sendBufferManager.SetBuffer(socketArgs);
+                sendTokenManager.Set(socketArgs);
             }
         }
 
@@ -87,10 +89,10 @@ namespace Bouyei.NetProviderFactory.Udp
         {
             try
             {
-                ArraySegment<byte>[] segItems = sentBufferPool.BufferToSegments(buffer, offset, size);
+                ArraySegment<byte>[] segItems = sendBufferManager.BufferToSegments(buffer, offset, size);
                 foreach (var seg in segItems)
                 {
-                    var tArgs = tokenPool.GetEmptyWait(isWaiting);
+                    var tArgs = sendTokenManager.GetEmptyWait(isWaiting);
                     if (tArgs == null)
                         throw new Exception("发送缓冲池已用完,等待回收超时...");
 
@@ -98,11 +100,11 @@ namespace Bouyei.NetProviderFactory.Udp
                     Socket s = SocketVersion(remoteEP);
                     tArgs.UserToken = s;
 
-                    if (!sentBufferPool.WriteBuffer(tArgs, seg.Array, seg.Offset, seg.Count))
+                    if (!sendBufferManager.WriteBuffer(tArgs, seg.Array, seg.Offset, seg.Count))
                     {
-                        tokenPool.Set(tArgs);
+                        sendTokenManager.Set(tArgs);
 
-                        throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sentBufferPool.BlockSize));
+                        throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBufferManager.BlockSize));
                     }
 
                     if (tArgs.RemoteEndPoint != null)
@@ -141,11 +143,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// </summary>
         private void DisposeSocketPool()
         {
-            while (tokenPool.Count > 0)
-            {
-                var item = tokenPool.Get();
-                if (item != null) item.Dispose();
-            }
+            sendTokenManager.ClearToCloseArgs();
         }
 
         /// <summary>
@@ -155,15 +153,15 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <returns></returns>
         private Socket SocketVersion(IPEndPoint ips)
         {
-            if (ips.AddressFamily == sentSocket.AddressFamily)
+            if (ips.AddressFamily == sendSocket.AddressFamily)
             {
-                return sentSocket;
+                return sendSocket;
             }
             else
             {
-                sentSocket = new Socket(ips.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+                sendSocket = new Socket(ips.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             }
-            return sentSocket;
+            return sendSocket;
         }
 
         /// <summary>
@@ -172,7 +170,7 @@ namespace Bouyei.NetProviderFactory.Udp
         /// <param name="e"></param>
         private void ProcessSent(SocketAsyncEventArgs e)
         {
-            tokenPool.Set(e);
+            sendTokenManager.Set(e);
 
             if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
             {

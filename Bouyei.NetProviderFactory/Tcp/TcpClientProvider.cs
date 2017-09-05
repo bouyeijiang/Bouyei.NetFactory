@@ -15,7 +15,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         private int cliConSend = 8;
         private byte[] cliRecBuffer = null;
         private Socket cliSocket = null;
-        private SocketTokenManager<SocketAsyncEventArgs> sTokenManager = null;
+        private SocketTokenManager<SocketAsyncEventArgs> sendTokenManager = null;
         private SocketBufferManager sBufferManager = null;
         private ChannelProviderType channelProviderState = ChannelProviderType.Async;
         private ManualResetEvent mReset = new ManualResetEvent(false);
@@ -55,7 +55,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             get { return isConnected; }
         }
 
-        public int SendBufferPoolNumber { get { return sTokenManager.Count; } }
+        public int SendBufferPoolNumber { get { return sendTokenManager.Count; } }
 
         public ChannelProviderType ChannelProviderState
         {
@@ -78,22 +78,14 @@ namespace Bouyei.NetProviderFactory.Tcp
             if (isDisposing)
             {
                 DisposeSocketPool();
-                cliSocket.Dispose();
-                //recBufferPool.Clear();
+                Utils.SafeCloseSocket(cliSocket);
                 _isDisposed = true;
             }
         }
 
         private void DisposeSocketPool()
         {
-            if (sTokenManager != null)
-            {
-                while (sTokenManager.Count > 0)
-                {
-                    var item = sTokenManager.Get();
-                    if (item != null) item.Dispose();
-                }
-            }
+            sendTokenManager.ClearToCloseArgs();
             if (sBufferManager != null)
             {
                 sBufferManager.Clear();
@@ -124,12 +116,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                if (isConnected ||
-                    cliSocket != null)
+                if (isConnected || cliSocket != null)
                 {
                     Close();
                 }
-
+                
                 isConnected = false;
                 channelProviderState = ChannelProviderType.Async;
                 InitializePool(cliConSend);
@@ -138,9 +129,11 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-                args.RemoteEndPoint = ips;
-                args.UserToken = new SocketToken(-1) { TokenSocket = cliSocket };
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs
+                {
+                    RemoteEndPoint = ips,
+                    UserToken = new SocketToken(-1) { TokenSocket = cliSocket }
+                };
 
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
@@ -165,8 +158,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                if (isConnected ||
-                    cliSocket != null)
+                if (isConnected || cliSocket != null)
                 {
                     Close();
                 }
@@ -179,9 +171,11 @@ namespace Bouyei.NetProviderFactory.Tcp
                 cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
                 //连接事件绑定
-                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-                args.RemoteEndPoint = ips;
-                args.UserToken = new SocketToken(-1) { TokenSocket = cliSocket };
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs
+                {
+                    RemoteEndPoint = ips,
+                    UserToken = new SocketToken(-1) { TokenSocket = cliSocket }
+                };
 
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
@@ -212,8 +206,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         public bool ConnectSync(int port, string ip)
         {
 
-            if (isConnected ||
-                cliSocket != null)
+            if (isConnected || cliSocket != null)
             {
                 Close();
             }
@@ -225,20 +218,22 @@ namespace Bouyei.NetProviderFactory.Tcp
             IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
             cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            again:
-            try
+            while (retry > 0)
             {
-                cliSocket.Connect(ips);
-                isConnected = true;
-                return true;
+                try
+                {
+                    --retry;
+                    cliSocket.Connect(ips);
+                    isConnected = true;
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    if (retry <= 0) throw ex;
+                    Thread.Sleep(1000);
+                }
             }
-            catch (Exception ex)
-            {
-                if (retry >= 0) throw ex;
-               Thread.Sleep(500);
-                retry -= 1;
-                goto again;
-            }
+            return false;
         }
 
         /// <summary>
@@ -267,13 +262,13 @@ namespace Bouyei.NetProviderFactory.Tcp
                 ArraySegment<byte>[] segItems = sBufferManager.BufferToSegments(buffer, offset, size);
                 foreach (var seg in segItems)
                 {
-                    var tArgs = sTokenManager.GetEmptyWait(isWaiting);
+                    var tArgs = sendTokenManager.GetEmptyWait(isWaiting);
                     if (tArgs == null)
                         throw new Exception("发送缓冲池已用完,等待回收超时...");
 
                     if (!sBufferManager.WriteBuffer(tArgs, seg.Array, seg.Offset, seg.Count))
                     {
-                        sTokenManager.Set(tArgs);
+                        sendTokenManager.Set(tArgs);
 
                         throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sBufferManager.BlockSize));
                     }
@@ -415,26 +410,8 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// </summary>
         public void Disconnect()
         {
-            try
-            {
-                if (cliSocket != null)
-                {
-                    isConnected = false;
-                    if (cliSocket.Connected)
-                    {
-                        cliSocket.Disconnect(true);
-                        cliSocket.Shutdown(SocketShutdown.Both);
-                    }
-
-                    cliSocket.Close();
-                    cliSocket.Dispose();
-                    cliSocket = null;
-                }
-            }
-            catch (Exception ex)
-            {
-                 throw ex;
-            }
+            Utils.SafeCloseSocket(cliSocket);
+            isConnected = false;
         }
 
         #endregion
@@ -456,17 +433,8 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         private void Close()
         {
-            if (cliSocket != null)
-            {
-                if (cliSocket.Connected)
-                {
-                    cliSocket.Shutdown(SocketShutdown.Both);
-                    cliSocket.Disconnect(true);
-                }
-                cliSocket.Close();
-                cliSocket.Dispose();
-                cliSocket = null;
-            }
+            mReset.Set();
+            Utils.SafeCloseSocket(cliSocket);
             DisposeSocketPool();
         }
 
@@ -476,10 +444,10 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="maxNumber"></param>
         private void InitializePool(int maxNumberOfConnections)
         {
-            if(sTokenManager!=null) sTokenManager.Clear();
+            if(sendTokenManager!=null) sendTokenManager.Clear();
             if (sBufferManager != null) sBufferManager.Clear();
 
-            sTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
+            sendTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
             sBufferManager = new SocketBufferManager(maxNumberOfConnections, cliRecBufferSize);
           
             SocketAsyncEventArgs tArgs = null;
@@ -496,7 +464,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                     TokenId = i
                 };
                 sBufferManager.SetBuffer(tArgs);
-                sTokenManager.Set(tArgs);
+                sendTokenManager.Set(tArgs);
             }
         }
 
@@ -529,7 +497,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             finally
             {
-                sTokenManager.Set(e);
+                sendTokenManager.Set(e);
             }
         }
 

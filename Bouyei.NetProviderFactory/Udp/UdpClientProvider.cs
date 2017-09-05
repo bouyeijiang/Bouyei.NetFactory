@@ -56,26 +56,14 @@ namespace Bouyei.NetProviderFactory.Udp
             {
                 DisposeSocketPool();
 
-                if (cliSocket != null)
-                {
-                    cliSocket.Shutdown(SocketShutdown.Both);
-                    cliSocket.Close();
-                    cliSocket.Dispose();
-                }
+                Utils.SafeCloseSocket(cliSocket);
                 _isDisposed = true;
             }
         }
 
         private void DisposeSocketPool()
         {
-            if (sendTokenManager != null)
-            {
-                while (sendTokenManager.Count > 0)
-                {
-                    var item = sendTokenManager.Get();
-                    if (item != null) item.Dispose();
-                }
-            }
+            sendTokenManager.ClearToCloseArgs();
             if (sendBufferManager != null)
             {
                 sendBufferManager.Clear();
