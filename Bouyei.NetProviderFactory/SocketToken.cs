@@ -47,9 +47,9 @@ namespace Bouyei.NetProviderFactory
             {
                 if (TokenSocket.Connected)
                 {
-                    TokenSocket.Shutdown(SocketShutdown.Both);
+                    TokenSocket.Shutdown(SocketShutdown.Send);
+                    TokenSocket.Close();
                 }
-                TokenSocket.Close();
             }
         }
 

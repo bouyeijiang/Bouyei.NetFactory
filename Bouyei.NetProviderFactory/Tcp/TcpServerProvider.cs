@@ -304,7 +304,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 {
                     e = new SocketAsyncEventArgs
                     {
-                        DisconnectReuseSocket = true
+                        //DisconnectReuseSocket = true
                     };
                     e.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 }
@@ -424,13 +424,19 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             finally
             {
-                if (e.SocketError == SocketError.Success)
+                if (e.SocketError == SocketError.Success
+                    &&e.BytesTransferred>0
+                    && sToken.TokenSocket.Connected)
                 {
                     //继续投递下一个接受请求
                     if (!sToken.TokenSocket.ReceiveAsync(e))
                     {
                         this.ProcessReceive(e);
                     }
+                }
+                else
+                {
+                    ProcessDisconnect(e);
                 }
             }
         }
@@ -491,10 +497,10 @@ namespace Bouyei.NetProviderFactory.Tcp
         }
 
         /// <summary>
-        /// 内部使用的释放连接对象方法
+        /// 关闭连接对象方法
         /// </summary>
         /// <param name="sToken"></param>
-        private void CloseToken(SocketToken sToken)
+        public void CloseToken(SocketToken sToken)
         {
             try
             {

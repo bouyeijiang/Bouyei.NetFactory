@@ -37,5 +37,7 @@ namespace Bouyei.NetProviderFactory
 
         void Stop();
 
+        void DisconnectToken(SocketToken sToken);
+
     }
 }

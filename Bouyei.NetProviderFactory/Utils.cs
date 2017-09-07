@@ -11,16 +11,11 @@ namespace Bouyei.NetProviderFactory
             {
                 try
                 {
-                    socket.Shutdown(SocketShutdown.Both);
+                    socket.Shutdown(SocketShutdown.Send);
+                    socket.Close();
                 }
                 catch
                 { }
-                try
-                {
-                    socket.Dispose();
-                    socket = null;
-                }
-                catch { }
             }
         }
     }

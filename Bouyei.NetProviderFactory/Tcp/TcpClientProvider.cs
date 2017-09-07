@@ -411,7 +411,6 @@ namespace Bouyei.NetProviderFactory.Tcp
         public void Disconnect()
         {
             Utils.SafeCloseSocket(cliSocket);
-            isConnected = false;
         }
 
         #endregion
@@ -427,7 +426,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             SocketToken sToken = e.UserToken as SocketToken;
             if (sToken != null)
             {
-                sToken.Dispose();
+                sToken.Close();
             }
         }
 
@@ -531,9 +530,22 @@ namespace Bouyei.NetProviderFactory.Tcp
                             RecievedCallback(sToken, realBytes);
                         }
                     }
-
-                    if (!isConnected) return;
-
+                }
+                else
+                {
+                    Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                if (e.SocketError==SocketError.Success &&
+                    e.BytesTransferred>0 &&
+                    cliSocket.Connected)
+                {
                     if (!cliSocket.ReceiveAsync(e))
                     {
                         ProcessReceiveHandler(e);
@@ -541,12 +553,8 @@ namespace Bouyei.NetProviderFactory.Tcp
                 }
                 else
                 {
-                   Close ();
+                    ProcessDisconnectHandler(e);
                 }
-            }
-            catch (Exception ex)
-            {
-                throw ex;
             }
         }
 

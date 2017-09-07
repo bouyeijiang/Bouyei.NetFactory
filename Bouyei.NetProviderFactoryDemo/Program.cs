@@ -27,7 +27,7 @@ namespace Bouyei.NetProviderFactoryDemo
             int svc_send_cnt = 0, svc_rec_cnt = 0, client_send_cnt = 0, client_rec_cnt = 0;
             //服务端
             INetServerProvider serverSocket = NetServerProvider.CreateProvider();
-
+            SocketToken s = null;
             byte[] sendbuffer = new byte[16];
             for (int i = 0; i < sendbuffer.Length; ++i)
             {
@@ -65,7 +65,7 @@ namespace Bouyei.NetProviderFactoryDemo
             });
             serverSocket.AcceptHandler = new OnAcceptHandler((sToken) =>
             {
-
+                s = sToken;
             });
             serverSocket.SentHanlder = new OnSentHandler((stoken,buff, offset,count) =>
             {
@@ -119,12 +119,12 @@ namespace Bouyei.NetProviderFactoryDemo
                 });
                 clientSocket.DisconnectedHanlder = new OnDisconnectedHandler((stoken) =>
                 {
-                    Console.WriteLine("clinetdiscount");
+                    Console.WriteLine("clinet discount");
                 });
                 bool rt = clientSocket.ConnectTo(port, "127.0.0.1");
                 if (rt)
                 {
-                    for (int i = 0; i < 10000; i++)
+                    for (int i = 0; i < 1; i++)
                     {
                         if (i % 100 == 0)
                         {
@@ -133,6 +133,9 @@ namespace Bouyei.NetProviderFactoryDemo
                         }
                         clientSocket.Send(sendbuffer,false);
                     }
+                   // serverSocket.DisconnectToken(s); 
+                    clientSocket.Disconnect();
+
                     Console.WriteLine("complete");
                     Console.ReadKey();
                     clientSocket.Dispose();
@@ -227,8 +230,8 @@ namespace Bouyei.NetProviderFactoryDemo
 
             //使用接收管理缓冲池解析数据包
             INetPacketProvider pkgProvider = NetPacketProvider.CreateProvider(1024);
-            bool rt= pkgProvider.SetBlock(buffer, 0, buffer.Length);
-            rt = pkgProvider.SetBlock(buffer, 0, buffer.Length);
+            bool rt= pkgProvider.SetBlocks(buffer, 0, buffer.Length);
+            rt = pkgProvider.SetBlocks(buffer, 0, buffer.Length);
             var dePkg= pkgProvider.GetBlocks();
 
             //解析数据包成结构信息

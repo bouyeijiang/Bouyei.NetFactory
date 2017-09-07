@@ -237,7 +237,6 @@ namespace Bouyei.NetProviderFactory
                     buffer, offset, size, isWaiting);
             }
         }
-
         public int SendSync(SocketToken sToken, byte[] buffer)
         {
             if (NetProviderType == NetProviderType.Tcp)
@@ -266,7 +265,17 @@ namespace Bouyei.NetProviderFactory
             }
             return 0;
         }
-
+        public void DisconnectToken(SocketToken sToken)
+        {
+            if (NetProviderType == NetProviderType.Tcp)
+            {
+                tcpServerProvider.CloseToken(sToken);
+            }
+            else if (NetProviderType == NetProviderType.Udp)
+            {
+               
+            }
+        }
         #endregion
     }
 }
