@@ -253,7 +253,7 @@ namespace Bouyei.NetProviderFactory.Udp
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
                 SocketAsyncEventArgs sendArgs = new SocketAsyncEventArgs();
-                sendArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                sendArgs.Completed += IO_Completed;
                 sendArgs.UserToken = cliSocket;
                 sendBufferManager.SetBuffer(sendArgs);
                 sendTokenManager.Set(sendArgs);

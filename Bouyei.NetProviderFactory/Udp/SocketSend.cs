@@ -71,7 +71,7 @@ namespace Bouyei.NetProviderFactory.Udp
                 {
                     UserToken = sendSocket
                 };
-                socketArgs.Completed += new EventHandler<SocketAsyncEventArgs>(ClientSocket_Completed);
+                socketArgs.Completed += ClientSocket_Completed;
                 sendBufferManager.SetBuffer(socketArgs);
                 sendTokenManager.Set(socketArgs);
             }

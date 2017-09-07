@@ -438,14 +438,10 @@ namespace Bouyei.NetProviderFactory.Tcp
             sendTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxNumberOfConnections);
             sBufferManager = new SocketBufferManager(maxNumberOfConnections, cliRecBufferSize);
           
-            SocketAsyncEventArgs tArgs = null;
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
-                tArgs = new SocketAsyncEventArgs()
-                {
-                    DisconnectReuseSocket = true
-                };
-                tArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                SocketAsyncEventArgs tArgs = new SocketAsyncEventArgs();
+                tArgs.Completed +=  IO_Completed;
                 tArgs.UserToken = new SocketToken(i)
                 {
                     TokenSocket = cliSocket,

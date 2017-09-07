@@ -299,11 +299,6 @@ namespace Bouyei.NetProviderFactoryDemo
             bool isStart = serverProvider.Start(port);
             if (isStart)
             {
-                //INetClientProvider clientProvider = NetClientProvider.CreateProvider();
-                //clientProvider.DisconnectedHanlder = new OnDisconnectedHandler((s) => {
-                //    Console.WriteLine(s.TokenIpEndPoint + " client disconnected");
-                //});
-
                 again:
                 for (int i = 0; i < 3; ++i)
                 {

@@ -72,12 +72,12 @@ namespace Bouyei.NetProviderFactory.Udp
             int maxConnectionCount)
         {
             socketSend = new SocketSend();
-            socketSend.SentEventHandler += new EventHandler<SocketAsyncEventArgs>(sendSocket_SentEventHandler);
+            socketSend.SentEventHandler +=  sendSocket_SentEventHandler;
             socketSend.Initialize(maxConnectionCount, recBufferSize);
 
             socketRecieve = new SocketReceive(port);
             socketRecieve.Initialize(maxConnectionCount, recBufferSize);
-            socketRecieve.OnReceived += new EventHandler<SocketAsyncEventArgs>(receiveSocket_OnReceived);
+            socketRecieve.OnReceived += receiveSocket_OnReceived;
             socketRecieve.StartReceive();
         }
         #endregion

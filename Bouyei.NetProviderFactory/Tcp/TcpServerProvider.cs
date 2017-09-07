@@ -93,14 +93,13 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="chunkBufferSize">接收块缓冲区</param>
         public TcpServerProvider(int maxConnections = 32, int chunkBufferSize = 4096)
         {
+            if (maxConnections < 2) maxConnections = 2;
             this.maxNumberOfConnections = maxConnections;
 
             maxNumberAcceptedClients = new Semaphore(maxConnections, maxConnections);
 
             recvBufferManager = new SocketBufferManager(maxConnections, chunkBufferSize);
             acceptTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
-
-            //maxConnections = maxConnections >= 65536 ? (maxConnections >> 1) : maxConnections;
 
             sendTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxConnections);
             sendBufferManager = new SocketBufferManager(maxConnections, chunkBufferSize);
@@ -139,7 +138,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 svcSocket.Bind(ips);
 
-                svcSocket.Listen(10);
+                svcSocket.Listen(maxNumberOfConnections >> 1);
 
                 isStoped = false;
 
@@ -260,7 +259,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-                args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                args.Completed += Accept_Completed;
                 args.UserToken = new SocketToken(i);
                 recvBufferManager.SetBuffer(args);
                 acceptTokenManager.Set(args);
@@ -276,7 +275,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-                args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                args.Completed += IO_Completed;
                 args.UserToken = new SocketToken(i);
                 sendBufferManager.SetBuffer(args);
                 sendTokenManager.Set(args);
@@ -299,7 +298,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 if (e == null)
                 {
                     e = new SocketAsyncEventArgs();
-                    e.Completed += IO_Completed;
+                    e.Completed += Accept_Completed;
                 }
                 else
                 {
@@ -509,7 +508,6 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
         }
 
-        //针对每一个连接的对象事件,当一个接受、发送、连接等操作完成时响应
         void IO_Completed(object sender, SocketAsyncEventArgs e)
         {
             switch (e.LastOperation)
@@ -525,6 +523,27 @@ namespace Bouyei.NetProviderFactory.Tcp
                     break;
                 case SocketAsyncOperation.Accept:
                     ProcessAccept(e);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        void Accept_Completed(object send,SocketAsyncEventArgs e)
+        {
+            switch (e.LastOperation)
+            {
+                case SocketAsyncOperation.Accept:
+                    ProcessAccept(e);
+                    break;
+                case SocketAsyncOperation.Disconnect:
+                    ProcessDisconnect(e);
+                    break;
+                case SocketAsyncOperation.Receive:
+                    ProcessReceive(e);
+                    break;
+                case SocketAsyncOperation.Send:
+                    ProcessSent(e);
                     break;
                 default:
                     break;
