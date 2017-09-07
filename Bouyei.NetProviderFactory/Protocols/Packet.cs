@@ -12,9 +12,13 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <summary>
         /// 包标志位
         /// </summary>
-        public static byte packageFlag { get;private set; } = 0xfe;
+        private static byte flag = 0xfe;
+        public static byte packageFlag {
+            get { return flag; }
+        }
 
-        public static byte subFlag { get; private set; } = 0xfd;
+        private static byte sflag = 0xfd;
+        public static byte subFlag { get { return sflag; } } 
 
         /// <summary>
         /// 报头信息
@@ -67,9 +71,9 @@ namespace Bouyei.NetProviderFactory.Protocols
             //还原转义并且过滤标志位
             byte[] dst = Restore(buffer, offset, size);
 
-            uint plen= dst.ToUInt32(5);
+            uint plen = dst.ToUInt32(5);
 
-            if (plen >= size -9)
+            if (plen >= size - 9)
                 return false;
 
             if (pHeader == null)
@@ -83,7 +87,7 @@ namespace Bouyei.NetProviderFactory.Protocols
 
             pHeader.packetAttribute.packetCount = dst.ToUInt16(3);
             pHeader.packetAttribute.payloadLength = plen;// dst.ToUInt32(5);
-         
+
             pPayload = new byte[pHeader.packetAttribute.payloadLength];
             Buffer.BlockCopy(dst, 9, pPayload, 0, pPayload.Length);
 
@@ -98,7 +102,7 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <returns></returns>
         private unsafe byte[] Escape(byte[] buffer)
         {
-           var tCnt = CheckEscapeFlagBitCount(buffer);
+            var tCnt = CheckEscapeFlagBitCount(buffer);
             if ((tCnt.Item1 + tCnt.Item2) == 0) return buffer;
 
             int plen = buffer.Length - 2;
@@ -114,13 +118,13 @@ namespace Bouyei.NetProviderFactory.Protocols
                 //消息头和消息体
                 while (plen > 0)
                 {
-                    if (*_src== packageFlag)
+                    if (*_src == packageFlag)
                     {
                         *_dst = subFlag;
                         *(_dst + 1) = 0x01;
                         _dst += 2;
                     }
-                    else if(*_src==subFlag)
+                    else if (*_src == subFlag)
                     {
                         *_dst = subFlag;
                         *(_dst + 1) = 0x02;
@@ -151,12 +155,12 @@ namespace Bouyei.NetProviderFactory.Protocols
         /// <returns></returns>
         private unsafe byte[] Restore(byte[] buffer, int offset, int size)
         {
-            var tCnt = CheckRestoreFlagBitCount(buffer,  offset, size);
+            var tCnt = CheckRestoreFlagBitCount(buffer, offset, size);
             if ((tCnt.Item1 + tCnt.Item2) == 0)
             {
 
-                byte[] buff = new byte[size-2];
-                Buffer.BlockCopy(buffer, offset+1, buff, 0, buff.Length);
+                byte[] buff = new byte[size - 2];
+                Buffer.BlockCopy(buffer, offset + 1, buff, 0, buff.Length);
                 return buff;
             }
 
@@ -197,7 +201,7 @@ namespace Bouyei.NetProviderFactory.Protocols
                         pLen -= 1;
                     }
                 }
-  
+
                 return rBuffer;
             }
         }
