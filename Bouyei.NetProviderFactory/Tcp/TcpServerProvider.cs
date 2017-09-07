@@ -426,7 +426,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 if (e.SocketError == SocketError.Success
                     &&e.BytesTransferred>0
-                    && sToken.TokenSocket.Connected)
+                    &&sToken.TokenSocket.Connected)
                 {
                     //继续投递下一个接受请求
                     if (!sToken.TokenSocket.ReceiveAsync(e))

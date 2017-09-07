@@ -124,9 +124,9 @@ namespace Bouyei.NetProviderFactoryDemo
                 bool rt = clientSocket.ConnectTo(port, "127.0.0.1");
                 if (rt)
                 {
-                    for (int i = 0; i < 1; i++)
+                    for (int i = 0; i < 100; i++)
                     {
-                        if (i % 100 == 0)
+                        if (i % 10 == 0)
                         {
                             Console.WriteLine(clientSocket.SendBufferNumber + ":" + i);
                             Console.WriteLine(string.Format("svc[send:{0},rec:{1}],client[send{2},rec:{3}]", svc_send_cnt, svc_rec_cnt, client_send_cnt, client_rec_cnt));

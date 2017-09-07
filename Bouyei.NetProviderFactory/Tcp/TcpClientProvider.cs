@@ -543,8 +543,8 @@ namespace Bouyei.NetProviderFactory.Tcp
             finally
             {
                 if (e.SocketError==SocketError.Success &&
-                    e.BytesTransferred>0 &&
-                    cliSocket.Connected)
+                    e.BytesTransferred>0
+                    &&cliSocket.Connected)
                 {
                     if (!cliSocket.ReceiveAsync(e))
                     {
