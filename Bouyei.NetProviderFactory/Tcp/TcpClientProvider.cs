@@ -129,21 +129,22 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-                SocketAsyncEventArgs args = new SocketAsyncEventArgs
+               var sArgs = new SocketAsyncEventArgs
                 {
                     RemoteEndPoint = ips,
                     UserToken = new SocketToken(-1) { TokenSocket = cliSocket }
                 };
 
-                args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
-                if (!cliSocket.ConnectAsync(args))
+                if (!cliSocket.ConnectAsync(sArgs))
                 {
-                    ProcessConnectHandler(args);
+                    ProcessConnectHandler(sArgs);
                 }
             }
             catch (Exception ex)
             {
+                cliSocket.Dispose();
                 throw ex;
             }
         }
@@ -171,17 +172,17 @@ namespace Bouyei.NetProviderFactory.Tcp
                 cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
                 //连接事件绑定
-                SocketAsyncEventArgs args = new SocketAsyncEventArgs
+               var sArgs = new SocketAsyncEventArgs
                 {
                     RemoteEndPoint = ips,
                     UserToken = new SocketToken(-1) { TokenSocket = cliSocket }
                 };
 
-                args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
-                if (!cliSocket.ConnectAsync(args))
+                if (!cliSocket.ConnectAsync(sArgs))
                 {
-                    ProcessConnectHandler(args);
+                    ProcessConnectHandler(sArgs);
                 }
                 mReset.WaitOne();
                 isConnected = cliSocket.Connected;
@@ -193,6 +194,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             catch (Exception ex)
             {
+                cliSocket.Dispose();
                 throw ex;
             }
         }
@@ -410,31 +412,18 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// </summary>
         public void Disconnect()
         {
-            Utils.SafeCloseSocket(cliSocket);
+            Close();
         }
 
         #endregion
 
         #region private method
 
-        /// <summary>
-        /// 关闭连接对象
-        /// </summary>
-        /// <param name="e"></param>
-        private void Close(SocketAsyncEventArgs e)
-        {
-            SocketToken sToken = e.UserToken as SocketToken;
-            if (sToken != null)
-            {
-                sToken.Close();
-            }
-        }
-
         private void Close()
         {
             mReset.Set();
-            Utils.SafeCloseSocket(cliSocket);
             DisposeSocketPool();
+            Utils.SafeCloseSocket(cliSocket);
         }
 
         /// <summary>
@@ -542,9 +531,9 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             finally
             {
-                if (e.SocketError==SocketError.Success &&
-                    e.BytesTransferred>0
-                    &&cliSocket.Connected)
+                if (e.SocketError == SocketError.Success &&
+                    e.BytesTransferred > 0
+                    && cliSocket.Connected)
                 {
                     if (!cliSocket.ReceiveAsync(e))
                     {
@@ -599,7 +588,11 @@ namespace Bouyei.NetProviderFactory.Tcp
             try
             {
                 isConnected = (e.SocketError == SocketError.Success);
-                if(isConnected) Close();
+                if (isConnected)
+                {
+                    isConnected = false;
+                    Close();
+                }
 
                 if (DisconnectedCallback != null)
                 {
@@ -634,6 +627,8 @@ namespace Bouyei.NetProviderFactory.Tcp
                     break;
                 case SocketAsyncOperation.Disconnect:
                     ProcessDisconnectHandler(e);
+                    break;
+                default:
                     break;
             }
         }

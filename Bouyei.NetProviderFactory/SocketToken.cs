@@ -47,9 +47,15 @@ namespace Bouyei.NetProviderFactory
             {
                 if (TokenSocket.Connected)
                 {
-                    TokenSocket.Shutdown(SocketShutdown.Send);
-                    TokenSocket.Close();
+                    try
+                    {
+                        TokenSocket.Shutdown(SocketShutdown.Send);
+                        TokenSocket.Disconnect(true);
+                    }
+                    catch
+                    { }
                 }
+                TokenSocket.Close();
             }
         }
 

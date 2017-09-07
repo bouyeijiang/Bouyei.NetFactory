@@ -15,9 +15,10 @@ namespace Bouyei.NetProviderFactoryDemo
     {
         static void Main(string[] args)
         {
+            ConnectionPoolTest();
             //ProtocolsDemo();
             //UdpDemo();
-            TcpDemo();
+            //TcpDemo();
             //ConnectionPoolManagerDemo();
         }
 
@@ -278,6 +279,56 @@ namespace Bouyei.NetProviderFactoryDemo
                 }
             }
 
+        }
+
+        private static void ConnectionPoolTest()
+        {
+            INetServerProvider serverProvider = NetServerProvider.CreateProvider(4096, 2);
+            INetTokenPoolProvider poolProvider = NetTokenPoolProvider.CreateProvider(60);
+            poolProvider.TimerEnable(false);
+
+            int port = 12345;
+
+            serverProvider.DisconnectedHanlder = new OnDisconnectedHandler((s) =>
+            {
+                Console.WriteLine(s.TokenIpEndPoint + "server disconnected");
+            });
+            serverProvider.AcceptHandler = new OnAcceptHandler((s) => {
+                poolProvider.AddToken(new NetConnectionToken(s));
+            });
+            bool isStart = serverProvider.Start(port);
+            if (isStart)
+            {
+                //INetClientProvider clientProvider = NetClientProvider.CreateProvider();
+                //clientProvider.DisconnectedHanlder = new OnDisconnectedHandler((s) => {
+                //    Console.WriteLine(s.TokenIpEndPoint + " client disconnected");
+                //});
+
+                again:
+                for (int i = 0; i < 3; ++i)
+                {
+                    INetClientProvider clientProvider = NetClientProvider.CreateProvider();
+                    clientProvider.DisconnectedHanlder = new OnDisconnectedHandler((s) =>
+                    {
+                        Console.WriteLine(s.TokenIpEndPoint + " client disconnected");
+                    });
+                    bool isConnected = clientProvider.ConnectTo(port, "127.0.0.1");
+
+                    Console.WriteLine(isConnected);
+                }
+                string info = Console.ReadLine();
+                if (info == "again")
+                {
+                    poolProvider.Clear();
+                    goto again;
+                }
+                else if (info == "stop")
+                {
+                    serverProvider.Stop();
+                    goto again;
+                }
+                Console.ReadKey();
+            }
         }
     }
 }

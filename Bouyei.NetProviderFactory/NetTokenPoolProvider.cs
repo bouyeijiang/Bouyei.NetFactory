@@ -58,5 +58,10 @@ namespace Bouyei.NetProviderFactory
         {
             return tokenConnectionManager.RefreshConnectionToken(sToken);
         }
+
+        public void Clear(bool isClose=true)
+        {
+            tokenConnectionManager.Clear(isClose);
+        }
     }
 }

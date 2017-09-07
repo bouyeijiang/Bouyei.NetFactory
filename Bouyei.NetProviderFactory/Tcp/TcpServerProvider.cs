@@ -135,7 +135,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 svcSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-                svcSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                //svcSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
                 svcSocket.Bind(ips);
 
@@ -257,11 +257,9 @@ namespace Bouyei.NetProviderFactory.Tcp
         private void InitializeAcceptPool()
         {
             acceptTokenManager.Clear();
-            SocketAsyncEventArgs args = null;
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
-                args = new SocketAsyncEventArgs();
-                //args.DisconnectReuseSocket = true;
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 args.UserToken = new SocketToken(i);
                 recvBufferManager.SetBuffer(args);
@@ -275,11 +273,9 @@ namespace Bouyei.NetProviderFactory.Tcp
         private void InitializeSendPool()
         {
             sendTokenManager.Clear();
-            SocketAsyncEventArgs args = null;
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
-                args = new SocketAsyncEventArgs();
-                //args.DisconnectReuseSocket = true;
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
                 args.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
                 args.UserToken = new SocketToken(i);
                 sendBufferManager.SetBuffer(args);
@@ -293,7 +289,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void StartAccept(SocketAsyncEventArgs e)
         {
-            if (isStoped ||svcSocket == null)
+            if (isStoped || svcSocket == null)
             {
                 isStoped = true;
                 return;
@@ -302,11 +298,8 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 if (e == null)
                 {
-                    e = new SocketAsyncEventArgs
-                    {
-                        //DisconnectReuseSocket = true
-                    };
-                    e.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+                    e = new SocketAsyncEventArgs();
+                    e.Completed += IO_Completed;
                 }
                 else
                 {
@@ -321,7 +314,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             catch (Exception ex)
             {
-                throw ex;
+                //throw ex;
             }
         }
 
@@ -331,48 +324,41 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessAccept(SocketAsyncEventArgs e)
         {
-            try
+            if (isStoped || maxNumberOfConnections <= numberOfConnections)
             {
-                if (isStoped)
-                {
-                    CloseToken(e);
-                    return;
-                }
-
-                //从对象池中取出一个对象
-                SocketAsyncEventArgs tArgs = acceptTokenManager.Get();
-                if (maxNumberOfConnections == numberOfConnections || tArgs == null)
-                {
-                    CloseToken(e);
-
-                    throw new Exception("已经达到最大连接数");
-                }
-
-                Interlocked.Increment(ref numberOfConnections);
-
-                SocketToken sToken= ((SocketToken)tArgs.UserToken);
-                sToken.TokenSocket = e.AcceptSocket;
-                sToken.TokenIpEndPoint = (IPEndPoint)e.AcceptSocket.RemoteEndPoint;
-                tArgs.UserToken = sToken;
-
-                //继续准备下一个接收
-                if (!e.AcceptSocket.ReceiveAsync(tArgs))
-                {
-                    ProcessReceive(tArgs);
-                }
-
-                //将信息传递到自定义的方法
-                if (AcceptedCallback != null)
-                    AcceptedCallback(tArgs.UserToken as SocketToken);
+                CloseToken(e);
+                return;
             }
-            catch (Exception ex)
+
+            //从对象池中取出一个对象
+            SocketAsyncEventArgs tArgs = acceptTokenManager.GetEmptyWait(false);
+            if (tArgs == null)
             {
-                throw ex;
+                CloseToken(e);
+                return;
+                //throw new Exception(string.Format("已经达到最大连接数max:{0};used:{1}",
+                //    maxNumberOfConnections, numberOfConnections));
             }
+
+            Interlocked.Increment(ref numberOfConnections);
+
+            SocketToken sToken = ((SocketToken)tArgs.UserToken);
+            sToken.TokenSocket = e.AcceptSocket;
+            sToken.TokenIpEndPoint = (IPEndPoint)e.AcceptSocket.RemoteEndPoint;
+            tArgs.UserToken = sToken;
+
+            //继续准备下一个接收
+            if (!sToken.TokenSocket.ReceiveAsync(tArgs))
+            {
+                ProcessReceive(tArgs);
+            }
+
+            //将信息传递到自定义的方法
+            if (AcceptedCallback != null)
+                AcceptedCallback(tArgs.UserToken as SocketToken);
 
             if (isStoped) return;
 
-            //继续监听
             StartAccept(e);
         }
 
@@ -425,8 +411,8 @@ namespace Bouyei.NetProviderFactory.Tcp
             finally
             {
                 if (e.SocketError == SocketError.Success
-                    &&e.BytesTransferred>0
-                    &&sToken.TokenSocket.Connected)
+                    && e.BytesTransferred > 0
+                    && sToken.TokenSocket.Connected)
                 {
                     //继续投递下一个接受请求
                     if (!sToken.TokenSocket.ReceiveAsync(e))
@@ -479,14 +465,13 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                Interlocked.Decrement(ref numberOfConnections);
-               
                 //将断开的对象重新放回复用队列
                 acceptTokenManager.Set(e);
 
+                Interlocked.Decrement(ref numberOfConnections);
                 //递减信号量
                 maxNumberAcceptedClients.Release();
-
+              
                 if (DisconnectedCallback != null)
                     DisconnectedCallback(e.UserToken as SocketToken);
             }
@@ -508,7 +493,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             catch (Exception ex)
             {
-                throw ex;
+               // throw ex;
             }
         }
 
@@ -516,8 +501,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                SocketToken sToken = e.UserToken as SocketToken;
-                if (sToken != null) sToken.Close();
+                e.Dispose();
             }
             catch (Exception)
             {

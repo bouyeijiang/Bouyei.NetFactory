@@ -15,7 +15,7 @@ namespace Bouyei.NetProviderFactory
         #region variable
         private bool _isDisposed = false;
         private int bufferSizeByConnection = 4096;
-        private int maxNumberOfConnections = 64;
+        private int maxConcurrentNumber = 64;
         private TcpClientProvider tcpClientProvider = null;
         private UdpClientProvider udpClientProvider = null;
         #endregion
@@ -169,20 +169,20 @@ namespace Bouyei.NetProviderFactory
 
         public NetClientProvider(
             int bufferSizeByConnection = 4096, 
-            int maxNumberOfConnections = 8,
+            int maxConcurrentNumber = 8,
              NetProviderType netProviderType = NetProviderType.Tcp)
         {
             NetProviderType = netProviderType;
             this.bufferSizeByConnection = bufferSizeByConnection;
-            this.maxNumberOfConnections = maxNumberOfConnections;
+            this.maxConcurrentNumber = maxConcurrentNumber;
 
             if (netProviderType == NetProviderType.Tcp)
             {
-                tcpClientProvider = new TcpClientProvider(bufferSizeByConnection, maxNumberOfConnections);
+                tcpClientProvider = new TcpClientProvider(bufferSizeByConnection, maxConcurrentNumber);
             }
             else if (netProviderType == NetProviderType.Udp)
             {
-                udpClientProvider = new UdpClientProvider(bufferSizeByConnection,maxNumberOfConnections);
+                udpClientProvider = new UdpClientProvider(bufferSizeByConnection,maxConcurrentNumber);
             }
         }
 
@@ -190,24 +190,24 @@ namespace Bouyei.NetProviderFactory
         {
             NetProviderType = netProviderType;
             this.bufferSizeByConnection = 4096;
-            this.maxNumberOfConnections = 8;
+            this.maxConcurrentNumber = 8;
 
             if (netProviderType == NetProviderType.Tcp)
             {
-                tcpClientProvider = new TcpClientProvider(bufferSizeByConnection, maxNumberOfConnections);
+                tcpClientProvider = new TcpClientProvider(bufferSizeByConnection, maxConcurrentNumber);
             }
             else if (netProviderType == NetProviderType.Udp)
             {
-                udpClientProvider = new UdpClientProvider(bufferSizeByConnection,maxNumberOfConnections);
+                udpClientProvider = new UdpClientProvider(bufferSizeByConnection,maxConcurrentNumber);
             }
         }
 
         public static NetClientProvider CreateProvider(
              int bufferSizeByConnection = 4096, 
-             int maxNumberOfConnections = 8,
+             int maxConcurrentNumber = 8,
              NetProviderType netProviderType = NetProviderType.Tcp)
         {
-            return new NetClientProvider(bufferSizeByConnection, maxNumberOfConnections, netProviderType);
+            return new NetClientProvider(bufferSizeByConnection, maxConcurrentNumber, netProviderType);
         }
 
         #endregion

@@ -99,6 +99,24 @@ namespace Bouyei.NetProviderFactory.Pools
             }
         }
 
+        public void Clear(bool isClose)
+        {
+            lock (lockObject)
+            {
+                while (list.Count > 0)
+                {
+                    var item = list.First();
+                    list.RemoveFirst();
+
+                    if (isClose)
+                    {
+                        if (item.Token != null)
+                            item.Token.Close();
+                    }
+                }
+            }
+        }
+
         public bool RefreshConnectionToken(SocketToken sToken)
         {
             lock (lockObject)

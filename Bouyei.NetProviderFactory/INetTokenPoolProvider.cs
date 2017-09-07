@@ -14,6 +14,7 @@ namespace Bouyei.NetProviderFactory
         void TimerEnable(bool isContinue);
         void AddToken(NetConnectionToken ncToken);
         bool RemoveToken(NetConnectionToken ncToken,bool isClose=true);
+        void Clear(bool isClose = true);
         NetConnectionToken GetTokenById(int Id);
         NetConnectionToken GetTokenBySocketToken(SocketToken sToken);
         bool RefreshExpireToken(SocketToken sToken);
