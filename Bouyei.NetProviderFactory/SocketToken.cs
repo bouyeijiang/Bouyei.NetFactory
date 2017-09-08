@@ -4,13 +4,13 @@ using System.Net.Sockets;
 
 namespace Bouyei.NetProviderFactory
 {
-    public class SocketToken:IDisposable,IComparable<SocketToken>
+    public class SocketToken : IDisposable, IComparable<SocketToken>
     {
         /// <summary>
         /// 会话编号
         /// </summary>
         public int TokenId { get; set; }
-       
+
         /// <summary>
         /// 会话socket对象
         /// </summary>
@@ -20,7 +20,7 @@ namespace Bouyei.NetProviderFactory
         /// </summary>
         public IPEndPoint TokenIpEndPoint { get; set; }
 
-        internal SocketAsyncEventArgs tokenAgrs { get; set; }
+        internal SocketAsyncEventArgs TokenAgrs { get; set; }
 
         private bool _isDisposed = false;
 
@@ -37,8 +37,8 @@ namespace Bouyei.NetProviderFactory
         {
             this.TokenId = id;
         }
-        
-        public SocketToken(){}
+
+        public SocketToken() { }
 
         /// <summary>
         /// 关闭该连接对象，释放相关资源,非完全释放Socket对象
@@ -52,7 +52,6 @@ namespace Bouyei.NetProviderFactory
                     try
                     {
                         TokenSocket.Shutdown(SocketShutdown.Send);
-                        TokenSocket.Disconnect(true);
                     }
                     catch
                     { }
@@ -98,7 +97,8 @@ namespace Bouyei.NetProviderFactory
         {
             if (_isDisposed) return;
 
-            if (isDisposing) {
+            if (isDisposing)
+            {
                 Close();
                 _isDisposed = true;
                 if (TokenSocket != null)

@@ -133,8 +133,8 @@ namespace Bouyei.NetProviderFactory.Tcp
                 IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
                 svcSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
-                //svcSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                svcSocket.UseOnlyOverlappedIO = true;
+                svcSocket.NoDelay = true;
 
                 svcSocket.Bind(ips);
 
@@ -269,11 +269,14 @@ namespace Bouyei.NetProviderFactory.Tcp
             acceptTokenManager.Clear();
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
-                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs() {
+                    DisconnectReuseSocket=true,
+                    SocketError=SocketError.SocketError
+                };
                 args.Completed += Accept_Completed;
                 args.UserToken = new SocketToken(i)
                 {
-                    tokenAgrs = args
+                    TokenAgrs = args,
                 };
                 recvBufferManager.SetBuffer(args);
                 acceptTokenManager.Set(args);
@@ -288,7 +291,10 @@ namespace Bouyei.NetProviderFactory.Tcp
             sendTokenManager.Clear();
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
-                SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs() {
+                    DisconnectReuseSocket=true,
+                    SocketError=SocketError.SocketError
+                };
                 args.Completed += IO_Completed;
                 args.UserToken = new SocketToken(i);
                 sendBufferManager.SetBuffer(args);
@@ -309,7 +315,9 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             if (e == null)
             {
-                e = new SocketAsyncEventArgs();
+                e = new SocketAsyncEventArgs() {
+                   DisconnectReuseSocket=true
+                };
                 e.Completed += Accept_Completed;
             }
             else
@@ -352,7 +360,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
             SocketToken sToken = ((SocketToken)tArgs.UserToken);
             sToken.TokenSocket = e.AcceptSocket;
-            sToken.tokenAgrs = tArgs;
+            sToken.TokenAgrs = tArgs;
             sToken.TokenIpEndPoint = (IPEndPoint)e.AcceptSocket.RemoteEndPoint;
             tArgs.UserToken = sToken;
 
@@ -380,8 +388,8 @@ namespace Bouyei.NetProviderFactory.Tcp
             SocketToken sToken = e.UserToken as SocketToken;
             if (isStoped)
             {
-                //DisconnectAsyncEvent(sToken);
-                 ProcessDisconnect(e);
+                DisconnectAsyncEvent(sToken);
+                //ProcessDisconnect(e);
                 return;
             }
             if (e.BytesTransferred == 0
@@ -459,9 +467,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessDisconnect(SocketAsyncEventArgs e)
         {
+            SocketToken sToken = e.UserToken as SocketToken;
+            if (sToken == null) return;
+
             try
             {
-                SocketToken sToken = e.UserToken as SocketToken;
                 sToken.Close();
 
                 Interlocked.Decrement(ref numberOfConnections);
@@ -494,27 +504,42 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 if (sToken == null
                     || sToken.TokenSocket == null
-                    || sToken.tokenAgrs == null) return;
+                    || sToken.TokenAgrs == null) return;
 
                 if (sToken.TokenSocket.Connected)
                     sToken.TokenSocket.Shutdown(SocketShutdown.Send);
 
-                var item = sendTokenManager.Get();
-                if (item != null)
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs() {
+                    DisconnectReuseSocket=true,
+                    SocketError=SocketError.SocketError,
+                    UserToken=null
+                };
+                args.Completed += Accept_Completed;
+                if(sToken.TokenSocket.DisconnectAsync(args)==false)
                 {
-                    try
-                    {
-                        bool isOk = sToken.DisconnectAsync(item);
-                        if (isOk == false)
-                        {
-                            ProcessDisconnect(sToken.tokenAgrs);
-                        }
-                    }
-                    finally
-                    {
-                        sendTokenManager.Set(item);
-                    }
+                    ProcessDisconnect(sToken.TokenAgrs);
                 }
+
+                //var item = sendTokenManager.Get();
+                //if (item != null)
+                //{
+                //    try
+                //    {
+                //        bool isOk = sToken.DisconnectAsync(item);
+                //        if (isOk == false)
+                //        {
+                //            ProcessDisconnect(sToken.tokenAgrs);
+                //        }
+                //    }
+                //    finally
+                //    {
+                //        sendTokenManager.Set(item);
+                //    }
+                //}
+            }
+            catch (ObjectDisposedException)
+            {
+
             }
             catch (Exception ex)
             {

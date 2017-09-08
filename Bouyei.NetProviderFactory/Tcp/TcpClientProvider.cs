@@ -128,12 +128,15 @@ namespace Bouyei.NetProviderFactory.Tcp
                 IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
                 cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-              
-               var sArgs = new SocketAsyncEventArgs
+                cliSocket.NoDelay = true;
+                cliSocket.UseOnlyOverlappedIO = true;
+
+                var sArgs = new SocketAsyncEventArgs
                 {
                     RemoteEndPoint = ips,
-                    UserToken = new SocketToken(-1) { TokenSocket = cliSocket }
+                    UserToken = new SocketToken(-1) { TokenSocket =cliSocket },
                 };
+                sArgs.SetBuffer(cliRecBuffer, 0, cliRecBufferSize);
                 sArgs.AcceptSocket = cliSocket;
                 sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
@@ -170,14 +173,16 @@ namespace Bouyei.NetProviderFactory.Tcp
                 IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
                 cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+                cliSocket.NoDelay = true;
+                cliSocket.UseOnlyOverlappedIO = true;
 
                 //连接事件绑定
                var sArgs = new SocketAsyncEventArgs
                 {
                     RemoteEndPoint = ips,
-                    UserToken = new SocketToken(-1) { TokenSocket = cliSocket }
+                    UserToken = new SocketToken(-1) { TokenSocket =cliSocket }
                 };
-
+                sArgs.SetBuffer(cliRecBuffer, 0, cliRecBufferSize);
                 sArgs.AcceptSocket = cliSocket;
                 sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
@@ -441,7 +446,9 @@ namespace Bouyei.NetProviderFactory.Tcp
           
             for (int i = 0; i < maxNumberOfConnections; ++i)
             {
-                SocketAsyncEventArgs tArgs = new SocketAsyncEventArgs();
+                SocketAsyncEventArgs tArgs = new SocketAsyncEventArgs() {
+                    DisconnectReuseSocket=true
+                };
                 tArgs.Completed +=  IO_Completed;
                 tArgs.UserToken = new SocketToken(i)
                 {
@@ -534,7 +541,6 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 if (isConnected)
                 {
-                    e.SetBuffer(cliRecBuffer, 0, cliRecBufferSize);
                     if (!cliSocket.ReceiveAsync(e))
                     {
                         ProcessReceiveHandler(e);

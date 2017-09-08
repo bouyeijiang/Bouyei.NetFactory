@@ -293,7 +293,8 @@ namespace Bouyei.NetProviderFactoryDemo
             {
                 Console.WriteLine(s.TokenIpEndPoint + "server disconnected");
             });
-            serverProvider.AcceptHandler = new OnAcceptHandler((s) => {
+            serverProvider.AcceptHandler = new OnAcceptHandler((s) =>
+            {
                 poolProvider.InsertToken(new NetConnectionToken(s));
             });
             bool isStart = serverProvider.Start(port);
@@ -305,22 +306,26 @@ namespace Bouyei.NetProviderFactoryDemo
                     INetClientProvider clientProvider = NetClientProvider.CreateProvider();
                     clientProvider.DisconnectedHanlder = new OnDisconnectedHandler((s) =>
                     {
-                        Console.WriteLine(s.TokenIpEndPoint + " client disconnected");
+                        // Console.WriteLine(s.TokenIpEndPoint + " client disconnected");
                     });
                     bool isConnected = clientProvider.ConnectTo(port, "127.0.0.1");
 
                     Console.WriteLine(isConnected);
                 }
+                Console.WriteLine(poolProvider.Count);
                 string info = Console.ReadLine();
                 if (info == "again")
                 {
-                    poolProvider.Clear(true);
-                    //var item = poolProvider.GetTopToken();
-                    //if (item != null)
-                    //{
-                    //    serverProvider.CloseToken(item.Token);
-                    //    poolProvider.RemoveToken(item, false);
-                    //}
+                    while (poolProvider.Count > 0)
+                    {
+                        // poolProvider.Clear(true);
+                        var item = poolProvider.GetTopToken();
+                        if (item != null)
+                        {
+                            serverProvider.CloseToken(item.Token);
+                            poolProvider.RemoveToken(item, false);
+                        }
+                    }
                     goto again;
                 }
                 else if (info == "stop")
