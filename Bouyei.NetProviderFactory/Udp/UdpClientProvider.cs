@@ -99,7 +99,7 @@ namespace Bouyei.NetProviderFactory.Udp
 
             serverIpEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
             cliSocket = new Socket(serverIpEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
-            cliSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
+            //cliSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
 
             int retry = 3;
             again:
@@ -144,16 +144,7 @@ namespace Bouyei.NetProviderFactory.Udp
             ArraySegment<byte>[] segItems = sendBufferManager.BufferToSegments(buffer, offset, size);
             foreach (var seg in segItems)
             {
-                SocketAsyncEventArgs tArgs = sendTokenManager.Get();
-                if (tArgs == null)
-                {
-                    while (isWaiting)
-                    {
-                        Thread.Sleep(1000);
-                        tArgs = sendTokenManager.Get();
-                        if (tArgs != null) break;
-                    }
-                }
+                SocketAsyncEventArgs tArgs = sendTokenManager.GetEmptyWait(isWaiting);
                 if (tArgs == null)
                     throw new Exception("发送缓冲池已用完,等待回收...");
 
@@ -330,14 +321,14 @@ namespace Bouyei.NetProviderFactory.Udp
             {
                 isConnected = e.SocketError == SocketError.Success;
 
-                if (SentCallbackHandler != null && isClientRequest(e)==false)
+                if (SentCallbackHandler != null && isClientRequest(e) == false)
                 {
                     SocketToken sToken = new SocketToken()
                     {
                         TokenSocket = e.UserToken as Socket,
                         TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint
                     };
-                    SentCallbackHandler(sToken, e.Buffer,e.Offset,e.BytesTransferred);
+                    SentCallbackHandler(sToken, e.Buffer, e.Offset, e.BytesTransferred);
                 }
             }
             catch (Exception ex)

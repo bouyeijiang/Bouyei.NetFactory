@@ -36,8 +36,7 @@ namespace Bouyei.NetProviderFactory
         int SendSync(SocketToken sToken, byte[] buffer, int offset, int size);
 
         void Stop();
-
-        void DisconnectToken(SocketToken sToken);
+        void CloseToken(SocketToken sToken);
 
     }
 }

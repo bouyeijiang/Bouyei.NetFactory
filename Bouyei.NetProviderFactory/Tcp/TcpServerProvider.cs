@@ -168,7 +168,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                isStoped = true;
+                DisposePoolToken();
 
                 if (numberOfConnections > 0)
                 {
@@ -177,8 +177,8 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                     numberOfConnections = 0;
                 }
-
-               Utils.SafeCloseSocket(svcSocket);
+                Utils.SafeCloseSocket(svcSocket);
+                isStoped = true;
             }
             catch (Exception ex)
             {
@@ -186,10 +186,15 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
         }
 
+        public void Close(SocketToken sToken)
+        {
+            DisconnectAsyncEvent(sToken);
+        }
+
         /// <summary>
         /// 异步发送数据
         /// </summary>
-        public void Send(SocketToken sToken, byte[] buffer, 
+        public void Send(SocketToken sToken, byte[] buffer,
             int offset, int size, bool isWaiting = true)
         {
             try
@@ -203,13 +208,13 @@ namespace Bouyei.NetProviderFactory.Tcp
                         throw new Exception("发送缓冲池已用完,等待回收超时...");
 
                     tArgs.UserToken = sToken;
-                    if (!sendBufferManager.WriteBuffer(tArgs, seg.Array,seg.Offset, seg.Count))
+                    if (!sendBufferManager.WriteBuffer(tArgs, seg.Array, seg.Offset, seg.Count))
                     {
                         sendTokenManager.Set(tArgs);
 
                         throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBufferManager.BlockSize));
                     }
-                    if (!sToken.TokenSocket.SendAsync(tArgs))
+                    if (!sToken.SendAsync(tArgs))
                     {
                         ProcessSent(tArgs);
                     }
@@ -250,6 +255,12 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         #region private method
 
+        private void DisposePoolToken()
+        {
+            sendTokenManager.ClearToCloseArgs();
+            acceptTokenManager.ClearToCloseArgs();
+        }
+
         /// <summary>
         /// 初始化接收对象池
         /// </summary>
@@ -260,7 +271,10 @@ namespace Bouyei.NetProviderFactory.Tcp
             {
                 SocketAsyncEventArgs args = new SocketAsyncEventArgs();
                 args.Completed += Accept_Completed;
-                args.UserToken = new SocketToken(i);
+                args.UserToken = new SocketToken(i)
+                {
+                    tokenAgrs = args
+                };
                 recvBufferManager.SetBuffer(args);
                 acceptTokenManager.Set(args);
             }
@@ -293,27 +307,20 @@ namespace Bouyei.NetProviderFactory.Tcp
                 isStoped = true;
                 return;
             }
-            try
+            if (e == null)
             {
-                if (e == null)
-                {
-                    e = new SocketAsyncEventArgs();
-                    e.Completed += Accept_Completed;
-                }
-                else
-                {
-                    e.AcceptSocket = null;
-                }
-                maxNumberAcceptedClients.WaitOne();
-
-                if (!svcSocket.AcceptAsync(e))
-                {
-                    ProcessAccept(e);
-                }
+                e = new SocketAsyncEventArgs();
+                e.Completed += Accept_Completed;
             }
-            catch (Exception ex)
+            else
             {
-                //throw ex;
+                e.AcceptSocket = null;
+            }
+            maxNumberAcceptedClients.WaitOne();
+
+            if (!svcSocket.AcceptAsync(e))
+            {
+                ProcessAccept(e);
             }
         }
 
@@ -323,9 +330,11 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessAccept(SocketAsyncEventArgs e)
         {
-            if (isStoped || maxNumberOfConnections <= numberOfConnections)
+            if (isStoped 
+                || maxNumberOfConnections <= numberOfConnections
+                ||e.SocketError!=SocketError.Success)
             {
-                CloseToken(e);
+                DisposeSocketArgs(e);
                 return;
             }
 
@@ -333,7 +342,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             SocketAsyncEventArgs tArgs = acceptTokenManager.GetEmptyWait(false);
             if (tArgs == null)
             {
-                CloseToken(e);
+                DisposeSocketArgs(e);
                 return;
                 //throw new Exception(string.Format("已经达到最大连接数max:{0};used:{1}",
                 //    maxNumberOfConnections, numberOfConnections));
@@ -343,6 +352,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
             SocketToken sToken = ((SocketToken)tArgs.UserToken);
             sToken.TokenSocket = e.AcceptSocket;
+            sToken.tokenAgrs = tArgs;
             sToken.TokenIpEndPoint = (IPEndPoint)e.AcceptSocket.RemoteEndPoint;
             tArgs.UserToken = sToken;
 
@@ -354,7 +364,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
             //将信息传递到自定义的方法
             if (AcceptedCallback != null)
-                AcceptedCallback(tArgs.UserToken as SocketToken);
+                AcceptedCallback(sToken);
 
             if (isStoped) return;
 
@@ -367,62 +377,49 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessReceive(SocketAsyncEventArgs e)
         {
-            SocketToken sToken = null;
-            try
+            SocketToken sToken = e.UserToken as SocketToken;
+            if (isStoped)
             {
-                if (isStoped)
+                //DisconnectAsyncEvent(sToken);
+                 ProcessDisconnect(e);
+                return;
+            }
+            if (e.BytesTransferred == 0
+                || e.SocketError != SocketError.Success)
+            {
+                ProcessDisconnect(e);
+                //DisconnectAsyncEvent(sToken);
+                return;
+            }
+
+            if (ReceiveOffsetCallback != null)
+                ReceiveOffsetCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);
+
+            //处理接收到的数据
+            if (ReceivedCallback != null)
+            {
+                if (e.Offset == 0 && e.BytesTransferred == e.Buffer.Length)
                 {
-                    CloseToken(e);
-                    return;
-                }
-
-                sToken = e.UserToken as SocketToken;
-
-                if (e.BytesTransferred > 0 && e.SocketError==SocketError.Success)
-                {
-                    if (ReceiveOffsetCallback != null)
-                        ReceiveOffsetCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);
-
-                    //处理接收到的数据
-                    if (ReceivedCallback != null)
-                    {
-                        if (e.Offset == 0 && e.BytesTransferred == e.Buffer.Length)
-                        {
-                            ReceivedCallback(sToken, e.Buffer);
-                        }
-                        else
-                        {
-                            byte[] realBytes = new byte[e.BytesTransferred];
-                            Buffer.BlockCopy(e.Buffer, e.Offset, realBytes, 0, e.BytesTransferred);
-                            ReceivedCallback(sToken, realBytes);
-                        }
-                    }
+                    ReceivedCallback(sToken, e.Buffer);
                 }
                 else
                 {
-                   CloseToken(sToken);
+                    byte[] realBytes = new byte[e.BytesTransferred];
+                    Buffer.BlockCopy(e.Buffer, e.Offset, realBytes, 0, e.BytesTransferred);
+                    ReceivedCallback(sToken, realBytes);
                 }
             }
-            catch (Exception ex)
+            if (sToken.TokenSocket.Connected)
             {
-                throw ex;
+                //继续投递下一个接受请求
+                if (!sToken.TokenSocket.ReceiveAsync(e))
+                {
+                    this.ProcessReceive(e);
+                }
             }
-            finally
+            else
             {
-                if (e.SocketError == SocketError.Success
-                    && e.BytesTransferred > 0
-                    && sToken.TokenSocket.Connected)
-                {
-                    //继续投递下一个接受请求
-                    if (!sToken.TokenSocket.ReceiveAsync(e))
-                    {
-                        this.ProcessReceive(e);
-                    }
-                }
-                else
-                {
-                    ProcessDisconnect(e);
-                }
+                DisconnectAsyncEvent(sToken);
             }
         }
 
@@ -443,7 +440,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 }
                 else
                 {
-                    CloseToken(sToken);  
+                    DisconnectAsyncEvent(sToken);
                 }
             }
             catch (Exception ex)
@@ -464,15 +461,18 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                //将断开的对象重新放回复用队列
-                acceptTokenManager.Set(e);
+                SocketToken sToken = e.UserToken as SocketToken;
+                sToken.Close();
 
                 Interlocked.Decrement(ref numberOfConnections);
                 //递减信号量
                 maxNumberAcceptedClients.Release();
-              
+
+                //将断开的对象重新放回复用队列
+                acceptTokenManager.Set(e);
+
                 if (DisconnectedCallback != null)
-                    DisconnectedCallback(e.UserToken as SocketToken);
+                    DisconnectedCallback(sToken);
             }
             catch (Exception ex)
             {
@@ -480,29 +480,43 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
         }
 
-        /// <summary>
-        /// 关闭连接对象方法
-        /// </summary>
-        /// <param name="sToken"></param>
-        public void CloseToken(SocketToken sToken)
+        private void DisposeSocketArgs(SocketAsyncEventArgs e)
         {
-            try
-            {
-                if (sToken != null) sToken.Close();
-            }
-            catch (Exception ex)
-            {
-               // throw ex;
-            }
+            SocketToken s = e.UserToken as SocketToken;
+            if (s != null) s.Close();
+            e.Dispose();
         }
 
-        private void CloseToken(SocketAsyncEventArgs e)
+        //slow close client socket
+        private void DisconnectAsyncEvent(SocketToken sToken)
         {
             try
             {
-                e.Dispose();
+                if (sToken == null
+                    || sToken.TokenSocket == null
+                    || sToken.tokenAgrs == null) return;
+
+                if (sToken.TokenSocket.Connected)
+                    sToken.TokenSocket.Shutdown(SocketShutdown.Send);
+
+                var item = sendTokenManager.Get();
+                if (item != null)
+                {
+                    try
+                    {
+                        bool isOk = sToken.DisconnectAsync(item);
+                        if (isOk == false)
+                        {
+                            ProcessDisconnect(sToken.tokenAgrs);
+                        }
+                    }
+                    finally
+                    {
+                        sendTokenManager.Set(item);
+                    }
+                }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
 
             }

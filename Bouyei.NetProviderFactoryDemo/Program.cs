@@ -250,7 +250,7 @@ namespace Bouyei.NetProviderFactoryDemo
 
             netServerProvider.AcceptHandler = new OnAcceptHandler((sToken) => {
                 _sToken = sToken;
-                tokenPool.AddToken(new NetConnectionToken()
+                tokenPool.InsertToken(new NetConnectionToken()
                 {
                     Token = sToken
                 });
@@ -294,7 +294,7 @@ namespace Bouyei.NetProviderFactoryDemo
                 Console.WriteLine(s.TokenIpEndPoint + "server disconnected");
             });
             serverProvider.AcceptHandler = new OnAcceptHandler((s) => {
-                poolProvider.AddToken(new NetConnectionToken(s));
+                poolProvider.InsertToken(new NetConnectionToken(s));
             });
             bool isStart = serverProvider.Start(port);
             if (isStart)
@@ -314,7 +314,13 @@ namespace Bouyei.NetProviderFactoryDemo
                 string info = Console.ReadLine();
                 if (info == "again")
                 {
-                    poolProvider.Clear();
+                    poolProvider.Clear(true);
+                    //var item = poolProvider.GetTopToken();
+                    //if (item != null)
+                    //{
+                    //    serverProvider.CloseToken(item.Token);
+                    //    poolProvider.RemoveToken(item, false);
+                    //}
                     goto again;
                 }
                 else if (info == "stop")

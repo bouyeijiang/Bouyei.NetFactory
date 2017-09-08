@@ -55,9 +55,7 @@ namespace Bouyei.NetProviderFactory
             {
                 if (freeBufferIndexPool.Count > 0)
                 {
-                    agrs.SetBuffer(this.wBuffer,
-                        this.freeBufferIndexPool.Dequeue(),
-                        wBlockSize);
+                    agrs.SetBuffer(this.wBuffer,   this.freeBufferIndexPool.Dequeue(), wBlockSize);
                 }
                 else
                 {

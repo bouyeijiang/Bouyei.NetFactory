@@ -52,7 +52,17 @@ namespace Bouyei.NetProviderFactory.Pools
             timeoutThreading.Change(_p, _p);
         }
 
-        public void AddToken(NetConnectionToken ncToken)
+        public NetConnectionToken GetTopToken()
+        {
+            lock (lockObject)
+            {
+                if (list.Count > 0)
+                    return list.First();
+                return null;
+            }
+        }
+
+        public void InsertToken(NetConnectionToken ncToken)
         {
             lock (lockObject)
             {

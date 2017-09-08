@@ -20,6 +20,8 @@ namespace Bouyei.NetProviderFactory
         /// </summary>
         public IPEndPoint TokenIpEndPoint { get; set; }
 
+        internal SocketAsyncEventArgs tokenAgrs { get; set; }
+
         private bool _isDisposed = false;
 
         //析构
@@ -66,6 +68,16 @@ namespace Bouyei.NetProviderFactory
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        public bool SendAsync(SocketAsyncEventArgs args)
+        {
+            return TokenSocket.SendAsync(args);
+        }
+
+        public bool DisconnectAsync(SocketAsyncEventArgs args)
+        {
+            return TokenSocket.DisconnectAsync(args);
         }
 
         /// <summary>

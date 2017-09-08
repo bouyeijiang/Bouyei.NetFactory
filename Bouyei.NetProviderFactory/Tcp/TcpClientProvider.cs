@@ -85,7 +85,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         private void DisposeSocketPool()
         {
-            sendTokenManager.ClearToCloseArgs();
+            sendTokenManager.Clear();
             if (sBufferManager != null)
             {
                 sBufferManager.Clear();
@@ -128,13 +128,13 @@ namespace Bouyei.NetProviderFactory.Tcp
                 IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
                 cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-
+              
                var sArgs = new SocketAsyncEventArgs
                 {
                     RemoteEndPoint = ips,
                     UserToken = new SocketToken(-1) { TokenSocket = cliSocket }
                 };
-
+                sArgs.AcceptSocket = cliSocket;
                 sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
                 if (!cliSocket.ConnectAsync(sArgs))
@@ -178,6 +178,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                     UserToken = new SocketToken(-1) { TokenSocket = cliSocket }
                 };
 
+                sArgs.AcceptSocket = cliSocket;
                 sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
 
                 if (!cliSocket.ConnectAsync(sArgs))
@@ -472,7 +473,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 }
                 else
                 {
-                    Close();
+                    ProcessDisconnectEvent(e);
                 }
             }
             catch (Exception ex)
@@ -491,54 +492,31 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessReceiveHandler(SocketAsyncEventArgs e)
         {
+            if (e.BytesTransferred == 0
+                || e.SocketError != SocketError.Success
+                || e.AcceptSocket.Connected == false)
+            {
+                ProcessDisconnectEvent(e);
+                return;
+            }
             SocketToken sToken = e.UserToken as SocketToken;
             sToken.TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint;
 
-            try
+            if (ReceiveOffsetCallback != null)
+                ReceiveOffsetCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);
+
+            if (RecievedCallback != null)
             {
-                if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
+                if (e.Offset == 0 && e.BytesTransferred == e.Buffer.Length)
                 {
-                    if (ReceiveOffsetCallback != null)
-                        ReceiveOffsetCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);
-
-                    if (RecievedCallback != null)
-                    {
-                        if (e.Offset == 0 && e.BytesTransferred == e.Buffer.Length)
-                        {
-                            RecievedCallback(sToken, e.Buffer);
-                        }
-                        else
-                        {
-                            byte[] realBytes = new byte[e.BytesTransferred];
-
-                            Buffer.BlockCopy(e.Buffer, e.Offset, realBytes, 0, e.BytesTransferred);
-                            RecievedCallback(sToken, realBytes);
-                        }
-                    }
+                    RecievedCallback(sToken, e.Buffer);
                 }
                 else
                 {
-                    Close();
-                }
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-            finally
-            {
-                if (e.SocketError == SocketError.Success &&
-                    e.BytesTransferred > 0
-                    && cliSocket.Connected)
-                {
-                    if (!cliSocket.ReceiveAsync(e))
-                    {
-                        ProcessReceiveHandler(e);
-                    }
-                }
-                else
-                {
-                    ProcessDisconnectHandler(e);
+                    byte[] realBytes = new byte[e.BytesTransferred];
+
+                    Buffer.BlockCopy(e.Buffer, e.Offset, realBytes, 0, e.BytesTransferred);
+                    RecievedCallback(sToken, realBytes);
                 }
             }
         }
@@ -562,6 +540,11 @@ namespace Bouyei.NetProviderFactory.Tcp
                         ProcessReceiveHandler(e);
                     }
                 }
+                if(isConnected==false)
+                {
+                    ProcessDisconnectEvent(e);
+                }
+
                 if (ConnectedCallback != null)
                 {
                     SocketToken sToken=e.UserToken as SocketToken;
@@ -600,6 +583,26 @@ namespace Bouyei.NetProviderFactory.Tcp
             catch (Exception ex)
             {
                 throw ex;
+            }
+        }
+
+        private void ProcessDisconnectEvent(SocketAsyncEventArgs e)
+        {
+            try
+            {
+                if(e.AcceptSocket.Connected)
+                e.AcceptSocket.Shutdown(SocketShutdown.Both);
+
+                bool willRaiseEvent =   willRaiseEvent = e.AcceptSocket.DisconnectAsync(e);
+
+                if (!willRaiseEvent)
+                {
+                    ProcessDisconnectHandler(e);
+                }
+            }
+            catch(Exception ex)
+            {
+
             }
         }
 

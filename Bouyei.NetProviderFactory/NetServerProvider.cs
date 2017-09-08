@@ -197,7 +197,6 @@ namespace Bouyei.NetProviderFactory
             }
             return false;
         }
-
         public void Stop()
         {
             if (NetProviderType == NetProviderType.Tcp)
@@ -209,7 +208,6 @@ namespace Bouyei.NetProviderFactory
                 udpServerProvider.Stop();
             }
         }
-
         public void Send(SocketToken sToken, byte[] buffer,bool isWaiting=true)
         {
             if (NetProviderType == NetProviderType.Tcp)
@@ -223,7 +221,6 @@ namespace Bouyei.NetProviderFactory
                     buffer, 0, buffer.Length,isWaiting);
             }
         }
-
         public void Send(SocketToken sToken, byte[] buffer, int offset, int size, bool isWaiting = true)
         {
             if (NetProviderType == NetProviderType.Tcp)
@@ -265,11 +262,11 @@ namespace Bouyei.NetProviderFactory
             }
             return 0;
         }
-        public void DisconnectToken(SocketToken sToken)
+        public void CloseToken(SocketToken sToken)
         {
             if (NetProviderType == NetProviderType.Tcp)
             {
-                tcpServerProvider.CloseToken(sToken);
+                tcpServerProvider.Close(sToken);
             }
             else if (NetProviderType == NetProviderType.Udp)
             {

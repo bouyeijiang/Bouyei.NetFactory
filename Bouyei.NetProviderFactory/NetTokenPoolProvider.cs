@@ -34,9 +34,14 @@ namespace Bouyei.NetProviderFactory
             tokenConnectionManager.TimerEnable(isContinue);
         }
 
-        public void AddToken(NetConnectionToken ncToken)
+        public NetConnectionToken GetTopToken()
         {
-            tokenConnectionManager.AddToken(ncToken);
+           return tokenConnectionManager.GetTopToken();
+        }
+
+        public void InsertToken(NetConnectionToken ncToken)
+        {
+            tokenConnectionManager.InsertToken(ncToken);
         }
 
         public bool RemoveToken(NetConnectionToken ncToken,bool isClose=true)

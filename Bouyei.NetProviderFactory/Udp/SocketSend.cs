@@ -114,6 +114,7 @@ namespace Bouyei.NetProviderFactory.Udp
                             ProcessSent(tArgs);
                         }
                     }
+                    Thread.Sleep(5);
                 }
             }
             catch (Exception ex)
