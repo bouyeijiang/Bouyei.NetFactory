@@ -301,7 +301,7 @@ namespace Bouyei.NetProviderFactoryDemo
             if (isStart)
             {
                 again:
-                for (int i = 0; i < 3; ++i)
+                for (int i = 0; i < 2; ++i)
                 {
                     INetClientProvider clientProvider = NetClientProvider.CreateProvider();
                     clientProvider.DisconnectedHanlder = new OnDisconnectedHandler((s) =>

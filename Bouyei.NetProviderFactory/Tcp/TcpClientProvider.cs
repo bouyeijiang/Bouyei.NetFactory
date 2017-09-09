@@ -599,7 +599,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 if(e.AcceptSocket.Connected)
                 e.AcceptSocket.Shutdown(SocketShutdown.Both);
 
-                bool willRaiseEvent =   willRaiseEvent = e.AcceptSocket.DisconnectAsync(e);
+                bool willRaiseEvent = e.AcceptSocket.DisconnectAsync(e);
 
                 if (!willRaiseEvent)
                 {

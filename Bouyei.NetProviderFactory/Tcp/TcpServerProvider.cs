@@ -315,8 +315,10 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             if (e == null)
             {
-                e = new SocketAsyncEventArgs() {
-                   DisconnectReuseSocket=true
+                e = new SocketAsyncEventArgs()
+                {
+                    DisconnectReuseSocket = true,
+                    UserToken = new SocketToken(-255)
                 };
                 e.Completed += Accept_Completed;
             }
@@ -385,20 +387,14 @@ namespace Bouyei.NetProviderFactory.Tcp
         /// <param name="e"></param>
         private void ProcessReceive(SocketAsyncEventArgs e)
         {
-            SocketToken sToken = e.UserToken as SocketToken;
-            if (isStoped)
-            {
-                DisconnectAsyncEvent(sToken);
-                //ProcessDisconnect(e);
-                return;
-            }
             if (e.BytesTransferred == 0
                 || e.SocketError != SocketError.Success)
             {
                 ProcessDisconnect(e);
-                //DisconnectAsyncEvent(sToken);
                 return;
             }
+
+            SocketToken sToken = e.UserToken as SocketToken;
 
             if (ReceiveOffsetCallback != null)
                 ReceiveOffsetCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);
@@ -427,7 +423,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             else
             {
-                DisconnectAsyncEvent(sToken);
+                ProcessDisconnect(e);
             }
         }
 
@@ -439,16 +435,13 @@ namespace Bouyei.NetProviderFactory.Tcp
         {
             try
             {
-                SocketToken sToken = e.UserToken as SocketToken;
-
                 if (e.SocketError == SocketError.Success)
                 {
                     if (SentCallback != null)
+                    {
+                        SocketToken sToken = e.UserToken as SocketToken;
                         SentCallback(sToken, e.Buffer, e.Offset, e.BytesTransferred);
-                }
-                else
-                {
-                    DisconnectAsyncEvent(sToken);
+                    }
                 }
             }
             catch (Exception ex)
@@ -468,7 +461,10 @@ namespace Bouyei.NetProviderFactory.Tcp
         private void ProcessDisconnect(SocketAsyncEventArgs e)
         {
             SocketToken sToken = e.UserToken as SocketToken;
-            if (sToken == null) return;
+            if (sToken == null) {
+                e.Dispose();
+                return;
+            }
 
             try
             {
@@ -492,8 +488,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         private void DisposeSocketArgs(SocketAsyncEventArgs e)
         {
-            SocketToken s = e.UserToken as SocketToken;
-            if (s != null) s.Close();
+            if (e.UserToken is SocketToken s) s.Close();
             e.Dispose();
         }
 
@@ -508,34 +503,18 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 if (sToken.TokenSocket.Connected)
                     sToken.TokenSocket.Shutdown(SocketShutdown.Send);
-
-                SocketAsyncEventArgs args = new SocketAsyncEventArgs() {
-                    DisconnectReuseSocket=true,
-                    SocketError=SocketError.SocketError,
-                    UserToken=null
+ 
+                SocketAsyncEventArgs args = new SocketAsyncEventArgs()
+                {
+                    DisconnectReuseSocket = true,
+                    SocketError = SocketError.SocketError,
+                    UserToken = null
                 };
                 args.Completed += Accept_Completed;
-                if(sToken.TokenSocket.DisconnectAsync(args)==false)
+                if (sToken.TokenSocket.DisconnectAsync(args) == false)
                 {
                     ProcessDisconnect(sToken.TokenAgrs);
                 }
-
-                //var item = sendTokenManager.Get();
-                //if (item != null)
-                //{
-                //    try
-                //    {
-                //        bool isOk = sToken.DisconnectAsync(item);
-                //        if (isOk == false)
-                //        {
-                //            ProcessDisconnect(sToken.tokenAgrs);
-                //        }
-                //    }
-                //    finally
-                //    {
-                //        sendTokenManager.Set(item);
-                //    }
-                //}
             }
             catch (ObjectDisposedException)
             {
