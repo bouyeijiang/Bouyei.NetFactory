@@ -124,17 +124,15 @@ namespace Bouyei.NetProviderFactory.Tcp
             reStart:
             try
             {
-                if (svcSocket != null)
-                {
-                    svcSocket.Close();
-                    svcSocket.Dispose();
-                }
+                CloseSocket(svcSocket);
 
                 IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
                 svcSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                svcSocket.UseOnlyOverlappedIO = true;
-                svcSocket.NoDelay = true;
+                svcSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+                svcSocket.LingerState = new LingerOption(true, 0);
+                //svcSocket.UseOnlyOverlappedIO = true;
+                //svcSocket.NoDelay = true;
 
                 svcSocket.Bind(ips);
 
@@ -147,6 +145,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             catch (Exception ex)
             {
+                CloseSocket(svcSocket);
                 ++errorCount;
 
                 if (errorCount >= 3)
@@ -492,6 +491,23 @@ namespace Bouyei.NetProviderFactory.Tcp
             e.Dispose();
         }
 
+        private void CloseSocket(Socket s)
+        {
+            if (s == null) return;
+            try
+            {
+                s.Shutdown(SocketShutdown.Both);
+            }
+            catch(ObjectDisposedException) { return; }
+            catch { }
+            try
+            {
+                s.Dispose();
+            }
+            catch { }
+            s = null;
+        }
+
         //slow close client socket
         private void DisconnectAsyncEvent(SocketToken sToken)
         {
@@ -518,7 +534,7 @@ namespace Bouyei.NetProviderFactory.Tcp
             }
             catch (ObjectDisposedException)
             {
-
+                return;
             }
             catch (Exception ex)
             {

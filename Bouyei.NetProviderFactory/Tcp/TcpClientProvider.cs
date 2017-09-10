@@ -13,6 +13,7 @@ namespace Bouyei.NetProviderFactory.Tcp
         private bool _isDisposed = false;
         private int cliRecBufferSize = 4096;
         private int cliConSend = 8;
+        private int cliConnectTimeout = 30000;
         private byte[] cliRecBuffer = null;
         private Socket cliSocket = null;
         private SocketTokenManager<SocketAsyncEventArgs> sendTokenManager = null;
@@ -127,27 +128,11 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
-                cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                cliSocket.NoDelay = true;
-                cliSocket.UseOnlyOverlappedIO = true;
-
-                var sArgs = new SocketAsyncEventArgs
-                {
-                    RemoteEndPoint = ips,
-                    UserToken = new SocketToken(-1) { TokenSocket =cliSocket },
-                };
-                sArgs.SetBuffer(cliRecBuffer, 0, cliRecBufferSize);
-                sArgs.AcceptSocket = cliSocket;
-                sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-
-                if (!cliSocket.ConnectAsync(sArgs))
-                {
-                    ProcessConnectHandler(sArgs);
-                }
+                cliSocket = CreateConnectAsync(ips, cliRecBuffer);
             }
             catch (Exception ex)
             {
-                cliSocket.Dispose();
+                Close();
                 throw ex;
             }
         }
@@ -172,25 +157,9 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
-                cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                cliSocket.NoDelay = true;
-                cliSocket.UseOnlyOverlappedIO = true;
+                cliSocket = CreateConnectAsync(ips, cliRecBuffer);
 
-                //连接事件绑定
-               var sArgs = new SocketAsyncEventArgs
-                {
-                    RemoteEndPoint = ips,
-                    UserToken = new SocketToken(-1) { TokenSocket =cliSocket }
-                };
-                sArgs.SetBuffer(cliRecBuffer, 0, cliRecBufferSize);
-                sArgs.AcceptSocket = cliSocket;
-                sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
-
-                if (!cliSocket.ConnectAsync(sArgs))
-                {
-                    ProcessConnectHandler(sArgs);
-                }
-                mReset.WaitOne();
+                mReset.WaitOne(cliConnectTimeout);
                 isConnected = cliSocket.Connected;
                 
                 if (isConnected)
@@ -225,7 +194,12 @@ namespace Bouyei.NetProviderFactory.Tcp
 
             IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
-            cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            cliSocket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+            {
+                LingerState = new LingerOption(true, 0),
+                NoDelay = true
+            };
+
             while (retry > 0)
             {
                 try
@@ -237,6 +211,7 @@ namespace Bouyei.NetProviderFactory.Tcp
                 }
                 catch (Exception ex)
                 {
+                    Close();
                     if (retry <= 0) throw ex;
                     Thread.Sleep(1000);
                 }
@@ -425,9 +400,32 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         #region private method
 
+        private Socket CreateConnectAsync(IPEndPoint ips, byte[] recBuffer)
+        {
+            Socket socket = new Socket(ips.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
+            {
+                LingerState = new LingerOption(true, 0),
+                NoDelay = true
+            };
+
+            //连接事件绑定
+            var sArgs = new SocketAsyncEventArgs
+            {
+                RemoteEndPoint = ips,
+                UserToken = new SocketToken(-1) { TokenSocket = socket }
+            };
+            sArgs.SetBuffer(recBuffer, 0, recBuffer.Length);
+            sArgs.AcceptSocket = socket;
+            sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
+            if (!socket.ConnectAsync(sArgs))
+            {
+                ProcessConnectHandler(sArgs);
+            }
+            return socket;
+        }
+
         private void Close()
         {
-            mReset.Set();
             DisposeSocketPool();
             Utils.SafeCloseSocket(cliSocket);
         }
@@ -541,27 +539,25 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 if (isConnected)
                 {
-                    if (!cliSocket.ReceiveAsync(e))
+                    if (ConnectedCallback != null)
+                    {
+                        SocketToken sToken = e.UserToken as SocketToken;
+                        sToken.TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint;
+                        ConnectedCallback(sToken, isConnected);
+                    }
+
+                    if (!e.AcceptSocket.ReceiveAsync(e))
                     {
                         ProcessReceiveHandler(e);
                     }
                 }
-                if(isConnected==false)
+                else
                 {
                     ProcessDisconnectEvent(e);
                 }
-
-                if (ConnectedCallback != null)
-                {
-                    SocketToken sToken=e.UserToken as SocketToken;
-                    sToken.TokenIpEndPoint=(IPEndPoint)e.RemoteEndPoint;
-                    ConnectedCallback(sToken, isConnected);
-                }
             }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
+            catch
+            { }
         }
 
         /// <summary>
@@ -573,7 +569,8 @@ namespace Bouyei.NetProviderFactory.Tcp
             try
             {
                 isConnected = (e.SocketError == SocketError.Success);
-                if (isConnected)
+                if (isConnected||
+                    e.AcceptSocket.Connected)
                 {
                     isConnected = false;
                     Close();

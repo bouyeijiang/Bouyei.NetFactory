@@ -15,10 +15,10 @@ namespace Bouyei.NetProviderFactoryDemo
     {
         static void Main(string[] args)
         {
-            ConnectionPoolTest();
+            //ConnectionPoolTest();
             //ProtocolsDemo();
             //UdpDemo();
-            //TcpDemo();
+            TcpDemo();
             //ConnectionPoolManagerDemo();
         }
 
@@ -125,7 +125,7 @@ namespace Bouyei.NetProviderFactoryDemo
                 bool rt = clientSocket.ConnectTo(port, "127.0.0.1");
                 if (rt)
                 {
-                    for (int i = 0; i < 100; i++)
+                    for (int i = 0; i < 1000; i++)
                     {
                         if (i % 10 == 0)
                         {

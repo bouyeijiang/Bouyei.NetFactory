@@ -31,7 +31,6 @@ namespace Bouyei.NetProviderFactory.Udp
             IPEndPoint localEndPoint = new IPEndPoint(IPAddress.Any, port);
             recSocket = new Socket(localEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             recSocket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
-
             recSocket.Bind(localEndPoint);
         }
 

@@ -13,8 +13,10 @@ namespace Bouyei.NetProviderFactory
                 {
                     if (socket.Connected)
                         socket.Shutdown(SocketShutdown.Send);
-
-                    socket.Disconnect(true);
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
                 }
                 catch
                 { }
