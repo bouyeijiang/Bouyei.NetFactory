@@ -27,7 +27,7 @@ namespace Bouyei.NetProviderFactory
         public SocketBufferManager(int maxCounts, int blockSize)
         {
             if (blockSize < 4) blockSize = 4;
-
+             
             this.wBlockSize = blockSize;
             this.wCurIndex = 0;
             wTotalSize = maxCounts * blockSize;

@@ -8,15 +8,19 @@ namespace Bouyei.NetProviderFactory
     {
         private Queue<T> collection = null;
         private int used = 0;
+        private int capacity = 4;
  
         public int Count
         {
             get { return collection.Count; }
         }
 
+
+        public int Capacity { get { return capacity; } }
         
         public SocketTokenManager(int capacity = 32)
         {
+            this.capacity = capacity;
             collection = new Queue<T>(capacity);
         }
 

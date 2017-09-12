@@ -217,7 +217,9 @@ namespace Bouyei.NetProviderFactory.Tcp
                     {
                         ProcessSent(tArgs);
                     }
-                    Thread.Sleep(10);
+
+                    if (sendTokenManager.Count < (sendTokenManager.Capacity >> 1))
+                        Thread.Sleep(5);
                 }
             }
             catch (Exception ex)

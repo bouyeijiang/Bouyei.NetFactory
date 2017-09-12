@@ -29,34 +29,33 @@ namespace Bouyei.NetProviderFactoryDemo
             //服务端
             INetServerProvider serverSocket = NetServerProvider.CreateProvider();
             SocketToken s = null;
-            byte[] sendbuffer = new byte[16];
+            byte[] sendbuffer = new byte[4096];
             for (int i = 0; i < sendbuffer.Length; ++i)
             {
                 sendbuffer[i] = (byte)(i > 255 ? 255 : i);
             }
-
             //将数据内容打包成指定格式发送
-            INetProtocolProvider protocolProvider = NetProtocolProvider.CreateProvider();
-           
+            //INetProtocolProvider protocolProvider = NetProtocolProvider.CreateProvider();
+
             //已经截取接收到的真实数据
             serverSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
             {
                 try
                 {
-                    byte[] buffer = protocolProvider.Encode(new Packet()
-                    {
-                        pHeader = new PacketHeader()
-                        {
-                            packetAttribute = new PacketAttribute()
-                            {
-                                packetCount = 1,//自定义,指定该消息需要分多少个数据包发送才完成
-                            },
-                            packetId = 0x10//根据业务自定义，标志该数据包的类型
-                        },
-                        pPayload = sendbuffer//携带的数据内容
-                    });
+                    //byte[] buffer = protocolProvider.Encode(new Packet()
+                    //{
+                    //    pHeader = new PacketHeader()
+                    //    {
+                    //        packetAttribute = new PacketAttribute()
+                    //        {
+                    //            packetCount = 1,//自定义,指定该消息需要分多少个数据包发送才完成
+                    //        },
+                    //        packetId = 0x10//根据业务自定义，标志该数据包的类型
+                    //    },
+                    //    pPayload = sendbuffer//携带的数据内容
+                    //});
 
-                    serverSocket.Send(sToken, buffer);
+                    // serverSocket.Send(sToken, sendbuffer);
                     svc_rec_cnt += 1;
                 }
                 catch (Exception ex)
@@ -88,30 +87,15 @@ namespace Bouyei.NetProviderFactoryDemo
                 {
                     client_send_cnt += 1;
                 });
-                INetPacketProvider pkgProvider = NetPacketProvider.CreateProvider(4096);
+               // INetPacketProvider pkgProvider = NetPacketProvider.CreateProvider(4096);
                 int exactPkgCnt = 0,failePkgCnt=0;
+
                 //异步连接
                 clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
                 {
                     try
                     {
-                       bool isIn= pkgProvider.SetBlocks(buff, offset, count);
-                        if (isIn == false)
-                        {
 
-                        }
-                        if (pkgProvider.Count > 0)
-                        {
-                            var pkgs = pkgProvider.GetBlocks();
-                            if (pkgs.Count > 0)
-                            {
-                                exactPkgCnt += pkgs.Count;
-                            }
-                            else
-                            {
-                                ++failePkgCnt;
-                            }
-                        }
                     }
                     catch (Exception ex)
                     {
@@ -125,17 +109,15 @@ namespace Bouyei.NetProviderFactoryDemo
                 bool rt = clientSocket.ConnectTo(port, "127.0.0.1");
                 if (rt)
                 {
-                    for (int i = 0; i < 1000; i++)
+                    for (int i = 0; i < 100000; i++)
                     {
-                        if (i % 10 == 0)
+                        if (i % 100 == 0)
                         {
                             Console.WriteLine(clientSocket.SendBufferNumber + ":" + i);
                             Console.WriteLine(string.Format("svc[send:{0},rec:{1}],client[send{2},rec:{3}]", svc_send_cnt, svc_rec_cnt, client_send_cnt, client_rec_cnt));
                         }
-                        clientSocket.Send(sendbuffer,false);
+                        clientSocket.Send(sendbuffer, false);
                     }
-                   // serverSocket.DisconnectToken(s); 
-                    clientSocket.Disconnect();
 
                     Console.WriteLine("complete");
                     Console.ReadKey();

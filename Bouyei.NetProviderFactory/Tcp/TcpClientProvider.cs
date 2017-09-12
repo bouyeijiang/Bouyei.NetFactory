@@ -262,7 +262,9 @@ namespace Bouyei.NetProviderFactory.Tcp
                     {
                         ProcessSentHandler(tArgs);
                     }
-                    Thread.Sleep(10);
+
+                    if (sendTokenManager.Count < (sendTokenManager.Capacity >> 1))
+                        Thread.Sleep(5);
                 }
             }
             catch (Exception ex)
@@ -414,7 +416,6 @@ namespace Bouyei.NetProviderFactory.Tcp
                 RemoteEndPoint = ips,
                 UserToken = new SocketToken(-1) { TokenSocket = socket }
             };
-            sArgs.SetBuffer(recBuffer, 0, recBuffer.Length);
             sArgs.AcceptSocket = socket;
             sArgs.Completed += new EventHandler<SocketAsyncEventArgs>(IO_Completed);
             if (!socket.ConnectAsync(sArgs))
@@ -539,6 +540,7 @@ namespace Bouyei.NetProviderFactory.Tcp
 
                 if (isConnected)
                 {
+                    e.SetBuffer(cliRecBuffer, 0, cliRecBufferSize);
                     if (ConnectedCallback != null)
                     {
                         SocketToken sToken = e.UserToken as SocketToken;
