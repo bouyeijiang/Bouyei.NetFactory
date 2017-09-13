@@ -489,7 +489,8 @@ namespace Bouyei.NetProviderFactory.Tcp
 
         private void DisposeSocketArgs(SocketAsyncEventArgs e)
         {
-            if (e.UserToken is SocketToken s) s.Close();
+            SocketToken s = e.UserToken as SocketToken;
+            if (s != null) s.Close();// if (e.UserToken is SocketToken s) --新语法
             e.Dispose();
         }
 
