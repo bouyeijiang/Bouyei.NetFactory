@@ -10,8 +10,10 @@
 tcp服务端客户端例子：
 
  //服务端
- INetServerProvider serverSocket = NetServerProvider.CreateProvider();
- serverSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
+
+
+ 	   INetServerProvider serverSocket = NetServerProvider.CreateProvider();
+ 	   serverSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
             {
  		//receive todo
             });
@@ -29,7 +31,7 @@ tcp服务端客户端例子：
             });
 
 
-	 bool isOk = serverSocket.Start(port);
+	   bool isOk = serverSocket.Start(port);
             if (isOk)
             {
                 //客户端
