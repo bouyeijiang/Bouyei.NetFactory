@@ -35,13 +35,13 @@ tcp服务端客户端例子：
             if (isOk)
             {
                 //客户端
-                INetClientProvider clientSocket = NetClientProvider.CreateProvider();
-                clientSocket.SentHanlder = new OnSentHandler((stoken, buff,offset,cont) =>
+              INetClientProvider clientSocket = NetClientProvider.CreateProvider();
+              clientSocket.SentHanlder = new OnSentHandler((stoken, buff,offset,cont) =>
                 {
                     
                 });
                 //异步连接
-                clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, 		count) =>
+            clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count)=>
                 {
                      
                 });
@@ -76,3 +76,40 @@ tcp服务端客户端例子：
             bool rt= pkgProvider.SetBlocks(buffer, 0, buffer.Length);
             rt = pkgProvider.SetBlocks(buffer, 0, buffer.Length);
             var dePkg= pkgProvider.GetBlocks();
+
+
+	   //连接池管理模块：	
+
+            int port = 13145;
+            INetServerProvider netServerProvider = NetServerProvider.CreateProvider();
+            INetTokenPoolProvider tokenPool = NetTokenPoolProvider.CreateProvider(60);
+            tokenPool.ConnectionTimeout = 60;
+         
+            netServerProvider.AcceptHandler = new OnAcceptHandler((sToken) => {
+                tokenPool.InsertToken(new NetConnectionToken()
+                {
+                    Token = sToken
+                });
+            });
+
+            bool isOk = netServerProvider.Start(port);
+            if (isOk)
+            {
+                INetClientProvider netClientProvider = NetClientProvider.CreateProvider();
+                netClientProvider.DisconnectedHanlder = new OnDisconnectedHandler((sToken) =>
+                {
+                    Console.WriteLine("client disconnected");
+                });
+                bool rt = netClientProvider.ConnectTo(port, "127.0.0.1");
+                if (rt)
+                {
+                    while (tokenPool.Count == 0)
+                    {
+                        Thread.Sleep(10);
+                    }
+                    var rtToken = tokenPool.GetTokenBySocketToken(_sToken);
+                    bool refreshRt = tokenPool.RefreshExpireToken(_sToken);
+                    Console.WriteLine("pool count:"+tokenPool.Count);
+                    Console.ReadKey();
+                }
+            }
