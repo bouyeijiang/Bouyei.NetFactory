@@ -71,7 +71,6 @@ namespace Bouyei.NetFactoryDemo
                 {
                     client_send_cnt += 1;
                 });
-               // INetPacketProvider pkgProvider = NetPacketProvider.CreateProvider(4096);
                 int exactPkgCnt = 0,failePkgCnt=0;
 
                 //异步连接
@@ -100,7 +99,7 @@ namespace Bouyei.NetFactoryDemo
                             Console.WriteLine(clientSocket.SendBufferNumber + ":" + i);
                             Console.WriteLine(string.Format("svc[send:{0},rec:{1}],client[send{2},rec:{3}]", svc_send_cnt, svc_rec_cnt, client_send_cnt, client_rec_cnt));
                         }
-                        clientSocket.Send(sendbuffer, false);
+                        clientSocket.Send(sendbuffer);
                     }
 
                     Console.WriteLine("complete");
@@ -212,8 +211,10 @@ namespace Bouyei.NetFactoryDemo
             INetServerProvider netServerProvider = NetServerProvider.CreateProvider();
             INetTokenPoolProvider tokenPool = NetTokenPoolProvider.CreateProvider(60);
             tokenPool.ConnectionTimeout = 60;
+            SocketToken _sToken = null;
          
             netServerProvider.AcceptHandler = new OnAcceptHandler((sToken) => {
+                _sToken = sToken;
                 tokenPool.InsertToken(new NetConnectionToken()
                 {
                     Token = sToken

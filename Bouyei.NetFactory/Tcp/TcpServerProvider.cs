@@ -218,7 +218,7 @@ namespace Bouyei.NetFactory.Tcp
                         ProcessSent(tArgs);
                     }
 
-                    if (sendTokenManager.Count < (sendTokenManager.Capacity >> 1))
+                    if (sendTokenManager.Count < (sendTokenManager.Capacity >> 2))
                         Thread.Sleep(5);
                 }
             }
