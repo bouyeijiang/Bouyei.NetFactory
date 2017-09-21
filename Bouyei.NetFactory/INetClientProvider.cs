@@ -24,6 +24,8 @@ namespace Bouyei.NetFactory
 
         OnDisconnectedHandler DisconnectedHanlder { get; set; }
 
+        OnConnectedHandler ConnectedHanlder { get; set; }
+
         ChannelProviderType ChannelProviderType { get; }
         int SendBufferNumber { get; }
         NetProviderType NetProviderType { get;}
