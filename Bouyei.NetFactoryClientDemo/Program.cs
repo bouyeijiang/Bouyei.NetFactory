@@ -21,7 +21,7 @@ namespace Bouyei.NetFactoryClientDemo
             clientSocket.ConnectedHandler = new OnConnectedHandler((sToken,isConnected) => {
                 clientSocket.Send(Encoding.UTF8.GetBytes("client:hello" + DateTime.Now));
             });
-            clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buffer, offset, cnt) =>
+            clientSocket.ReceiveOffsetHandler = new OnReceiveOffsetHandler((sToken, buffer, offset, cnt) =>
             {
                 Console.WriteLine("client:from server[" + Encoding.UTF8.GetString(buffer, offset, cnt));
             });

@@ -7,12 +7,13 @@ using System.Threading;
 
 namespace Bouyei.NetFactory.Pools
 {
+    using Base;
     internal class TokenConnectionManager
     {
         LinkedList<NetConnectionToken> list = null;
         int period = 60;//s
         Timer timeoutThreading = null;
-        private object lockObject = new object();
+        LockParam lockParam = null;
 
         public int ConnectionTimeout { get; set; } = 60;//s
 
@@ -23,6 +24,7 @@ namespace Bouyei.NetFactory.Pools
             if (period < 2) this.period = 2;
             else this.period = period;
 
+            lockParam = new LockParam();
             int _period = GetPeriodSeconds();
             list = new LinkedList<NetConnectionToken>();
             timeoutThreading = new Timer(new TimerCallback(timeoutHandler), null, _period, _period);
@@ -54,7 +56,7 @@ namespace Bouyei.NetFactory.Pools
 
         public NetConnectionToken GetTopToken()
         {
-            lock (lockObject)
+            using(LockWait lwait=new LockWait(ref lockParam))
             {
                 if (list.Count > 0)
                     return list.First();
@@ -64,7 +66,7 @@ namespace Bouyei.NetFactory.Pools
 
         public void InsertToken(NetConnectionToken ncToken)
         {
-            lock (lockObject)
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 list.AddLast(ncToken);
             }
@@ -72,7 +74,7 @@ namespace Bouyei.NetFactory.Pools
 
         public bool RemoveToken(NetConnectionToken ncToken,bool isClose)
         {
-            lock (lockObject)
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 if (isClose) ncToken.Token.Close();
 
@@ -82,7 +84,7 @@ namespace Bouyei.NetFactory.Pools
 
         public bool RemoveToken(SocketToken sToken)
         {
-            lock (lockObject)
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 var item = list.Where(x => x.Token.CompareTo(sToken) == 0).FirstOrDefault();
                 if (item != null)
@@ -95,7 +97,7 @@ namespace Bouyei.NetFactory.Pools
 
         public NetConnectionToken GetTokenById(int Id)
         {
-            lock (lockObject)
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 return list.Where(x => x.Token.TokenId == Id).FirstOrDefault();
             }
@@ -103,7 +105,7 @@ namespace Bouyei.NetFactory.Pools
 
         public NetConnectionToken GetTokenBySocketToken(SocketToken sToken)
         {
-            lock (lockObject)
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 return list.Where(x => x.Token.CompareTo(sToken) == 0).FirstOrDefault();
             }
@@ -111,7 +113,7 @@ namespace Bouyei.NetFactory.Pools
 
         public void Clear(bool isClose)
         {
-            lock (lockObject)
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 while (list.Count > 0)
                 {
@@ -129,7 +131,7 @@ namespace Bouyei.NetFactory.Pools
 
         public bool RefreshConnectionToken(SocketToken sToken)
         {
-            lock (lockObject)
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 var rt = list.Find(new NetConnectionToken(sToken));
 
@@ -142,7 +144,7 @@ namespace Bouyei.NetFactory.Pools
 
         private void timeoutHandler(object obj)
         {
-            lock (lockObject)
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 foreach (var item in list)
                 {

@@ -16,15 +16,15 @@ namespace Bouyei.NetFactory
     public interface INetClientProvider:IDisposable
     {
         bool IsConnected { get; }
-        OnReceiveHandler ReceiveHanlder { get; set; }
+        OnReceiveHandler ReceiveHandler { get; set; }
 
-        OnSentHandler SentHanlder { get; set; }
+        OnSentHandler SentHandler { get; set; }
 
-        OnReceiveOffsetHandler ReceiveOffsetHanlder { get; set; }
+        OnReceiveOffsetHandler ReceiveOffsetHandler { get; set; }
 
-        OnDisconnectedHandler DisconnectedHanlder { get; set; }
+        OnDisconnectedHandler DisconnectedHandler { get; set; }
 
-        OnConnectedHandler ConnectedHanlder { get; set; }
+        OnConnectedHandler ConnectedHandler { get; set; }
 
         ChannelProviderType ChannelProviderType { get; }
         int SendBufferNumber { get; }

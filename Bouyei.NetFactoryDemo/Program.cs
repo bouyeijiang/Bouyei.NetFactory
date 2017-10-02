@@ -36,7 +36,7 @@ namespace Bouyei.NetFactoryDemo
             }
 
             //已经截取接收到的真实数据
-            serverSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
+            serverSocket.ReceiveOffsetHandler = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
             {
                 try
                 { 
@@ -51,11 +51,11 @@ namespace Bouyei.NetFactoryDemo
             {
                 s = sToken;
             });
-            serverSocket.SentHanlder = new OnSentHandler((stoken,buff, offset,count) =>
+            serverSocket.SentHandler = new OnSentHandler((stoken,buff, offset,count) =>
             {
                 svc_send_cnt += 1;
             });
-            serverSocket.DisconnectedHanlder = new OnDisconnectedHandler((stoken) =>
+            serverSocket.DisconnectedHandler = new OnDisconnectedHandler((stoken) =>
             {
                 Console.WriteLine("disconnect" + stoken.TokenId);
             });
@@ -67,14 +67,14 @@ namespace Bouyei.NetFactoryDemo
 
                 //客户端
                 INetClientProvider clientSocket = NetClientProvider.CreateProvider();
-                clientSocket.SentHanlder = new OnSentHandler((stoken, buff,offset,cont) =>
+                clientSocket.SentHandler = new OnSentHandler((stoken, buff,offset,cont) =>
                 {
                     client_send_cnt += 1;
                 });
                 int exactPkgCnt = 0,failePkgCnt=0;
 
                 //异步连接
-                clientSocket.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
+                clientSocket.ReceiveOffsetHandler = new OnReceiveOffsetHandler((sToken, buff, offset, count) =>
                 {
                     try
                     {
@@ -85,7 +85,7 @@ namespace Bouyei.NetFactoryDemo
 
                     }
                 });
-                clientSocket.DisconnectedHanlder = new OnDisconnectedHandler((stoken) =>
+                clientSocket.DisconnectedHandler = new OnDisconnectedHandler((stoken) =>
                 {
                     Console.WriteLine("clinet discount");
                 });
@@ -117,7 +117,7 @@ namespace Bouyei.NetFactoryDemo
             int svc_c = 0, cli_c = 0, cli_c2 = 0;
             INetClientProvider clientProvider = null;
             INetServerProvider serverProvider = NetServerProvider.CreateProvider(4096, 64, NetProviderType.Udp);
-            serverProvider.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
+            serverProvider.ReceiveOffsetHandler = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
             {
                 ++svc_c;
                 Console.WriteLine("from client:" +svc_c+ Encoding.UTF8.GetString(buffer, offset, count));
@@ -133,12 +133,12 @@ namespace Bouyei.NetFactoryDemo
                 }
                 
                 clientProvider = NetClientProvider.CreateProvider(4096, 4, NetProviderType.Udp);
-                clientProvider.SentHanlder = new OnSentHandler((sToken,buff,offset, count) =>
+                clientProvider.SentHandler = new OnSentHandler((sToken,buff,offset, count) =>
                 {
                     ++sentcnt;
                   //  mER.Set();
                 });
-                clientProvider.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
+                clientProvider.ReceiveOffsetHandler = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
                 {
                     Console.WriteLine("from server one:" +cli_c+ Encoding.UTF8.GetString(buffer, offset, count));
                     ++cli_c;
@@ -147,7 +147,7 @@ namespace Bouyei.NetFactoryDemo
                 int c = 100000;
 
                 INetClientProvider netClient = NetClientProvider.CreateProvider(4096, 4, NetProviderType.Udp);
-                netClient.ReceiveOffsetHanlder = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
+                netClient.ReceiveOffsetHandler = new OnReceiveOffsetHandler((sToken, buffer, offset, count) =>
                   {
                       ++cli_c2;
                       Console.WriteLine("from server two:"+cli_c2 + Encoding.UTF8.GetString(buffer, offset, count));
@@ -225,7 +225,7 @@ namespace Bouyei.NetFactoryDemo
             if (isOk)
             {
                 INetClientProvider netClientProvider = NetClientProvider.CreateProvider();
-                netClientProvider.DisconnectedHanlder = new OnDisconnectedHandler((sToken) =>
+                netClientProvider.DisconnectedHandler = new OnDisconnectedHandler((sToken) =>
                 {
                     Console.WriteLine("client disconnected");
                 });
@@ -253,7 +253,7 @@ namespace Bouyei.NetFactoryDemo
 
             int port = 12345;
 
-            serverProvider.DisconnectedHanlder = new OnDisconnectedHandler((s) =>
+            serverProvider.DisconnectedHandler = new OnDisconnectedHandler((s) =>
             {
                 Console.WriteLine(s.TokenIpEndPoint + "server disconnected");
             });
@@ -268,7 +268,7 @@ namespace Bouyei.NetFactoryDemo
                 for (int i = 0; i < 2; ++i)
                 {
                     INetClientProvider clientProvider = NetClientProvider.CreateProvider();
-                    clientProvider.DisconnectedHanlder = new OnDisconnectedHandler((s) =>
+                    clientProvider.DisconnectedHandler = new OnDisconnectedHandler((s) =>
                     {
                         // Console.WriteLine(s.TokenIpEndPoint + " client disconnected");
                     });

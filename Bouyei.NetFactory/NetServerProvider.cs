@@ -27,7 +27,7 @@ namespace Bouyei.NetFactory
 
         #region property
         private OnReceiveHandler _receiveHanlder = null;
-        public OnReceiveHandler ReceiveHanlder
+        public OnReceiveHandler ReceiveHandler
         {
             get { return _receiveHanlder; }
             set
@@ -45,7 +45,7 @@ namespace Bouyei.NetFactory
         }
 
         private OnSentHandler _sentHanlder = null;
-        public OnSentHandler SentHanlder
+        public OnSentHandler SentHandler
         {
             get { return _sentHanlder; }
             set
@@ -77,7 +77,7 @@ namespace Bouyei.NetFactory
         }
 
         private OnReceiveOffsetHandler _receiveOffsetHandler = null;
-        public OnReceiveOffsetHandler ReceiveOffsetHanlder
+        public OnReceiveOffsetHandler ReceiveOffsetHandler
         {
             get { return _receiveOffsetHandler; }
             set
@@ -95,7 +95,7 @@ namespace Bouyei.NetFactory
         }
 
         private OnDisconnectedHandler _disconnectedHanlder = null;
-        public OnDisconnectedHandler DisconnectedHanlder
+        public OnDisconnectedHandler DisconnectedHandler
         {
             get { return _disconnectedHanlder; }
             set

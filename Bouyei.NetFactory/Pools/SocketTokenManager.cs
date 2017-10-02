@@ -4,12 +4,14 @@ using System.Threading;
 
 namespace Bouyei.NetFactory
 {
+    using Base;
+
     internal class SocketTokenManager<T>
     {
         private Queue<T> collection = null;
-        private int used = 0;
+        private LockParam lockParam = new LockParam();
         private int capacity = 4;
- 
+
         public int Count
         {
             get { return collection.Count; }
@@ -17,72 +19,45 @@ namespace Bouyei.NetFactory
 
 
         public int Capacity { get { return capacity; } }
-        
+
         public SocketTokenManager(int capacity = 32)
         {
             this.capacity = capacity;
             collection = new Queue<T>(capacity);
         }
 
-      
+
         public T Get()
         {
-            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
-                Thread.Sleep(1);
-            }
-            try
-            {
-                if (collection.Count > 0) return collection.Dequeue();
+                if (collection.Count > 0)
+                    return collection.Dequeue();
                 else return default(T);
-            }
-            finally
-            {
-                Interlocked.Exchange(ref used, 0);
             }
         }
 
- 
+
         public void Set(T item)
         {
-            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
-            {
-                Thread.Sleep(1);
-            }
-            try
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 collection.Enqueue(item);
             }
-            finally
-            {
-                Interlocked.Exchange(ref used, 0);
-            }
         }
 
- 
+
         public void Clear()
         {
-            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
-            {
-                Thread.Sleep(1);
-            }
-            try
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 collection.Clear();
-            }
-            finally
-            {
-                Interlocked.Exchange(ref used, 0);
             }
         }
 
         public void ClearToCloseToken()
         {
-            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
-            {
-                Thread.Sleep(1);
-            }
-            try
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 while (collection.Count > 0)
                 {
@@ -90,19 +65,11 @@ namespace Bouyei.NetFactory
                     if (token != null) token.Close();
                 }
             }
-            finally
-            {
-                Interlocked.Exchange(ref used, 0);
-            }
         }
 
         public void ClearToCloseArgs()
         {
-            while (Interlocked.CompareExchange(ref used, 0, 1) != 0)
-            {
-                Thread.Sleep(1);
-            }
-            try
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 while (collection.Count > 0)
                 {
@@ -110,13 +77,9 @@ namespace Bouyei.NetFactory
                     if (token != null) token.Dispose();
                 }
             }
-            finally
-            {
-                Interlocked.Exchange(ref used, 0);
-            }
         }
- 
-        public T GetEmptyWait(bool isWaitingFor=true)
+
+        public T GetEmptyWait(bool isWaitingFor = true)
         {
             int retry = 1;
 

@@ -15,15 +15,15 @@ namespace Bouyei.NetFactory
 {
    public interface INetServerProvider:IDisposable
     {
-        OnReceiveHandler ReceiveHanlder { get; set; }
+        OnReceiveHandler ReceiveHandler { get; set; }
 
-        OnSentHandler SentHanlder { get; set; }
+        OnSentHandler SentHandler { get; set; }
 
         OnAcceptHandler AcceptHandler { get; set; }
 
-        OnReceiveOffsetHandler ReceiveOffsetHanlder { get; set; }
+        OnReceiveOffsetHandler ReceiveOffsetHandler { get; set; }
 
-        OnDisconnectedHandler DisconnectedHanlder { get; set; }
+        OnDisconnectedHandler DisconnectedHandler { get; set; }
 
         bool Start(int port, string ip = "0.0.0.0");
 

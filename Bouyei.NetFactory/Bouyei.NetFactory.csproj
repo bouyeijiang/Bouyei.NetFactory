@@ -48,6 +48,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Base\LockWait.cs" />
     <Compile Include="INetClientProvider.cs" />
     <Compile Include="INetProtocolProvider.cs" />
     <Compile Include="INetServerProvider.cs" />

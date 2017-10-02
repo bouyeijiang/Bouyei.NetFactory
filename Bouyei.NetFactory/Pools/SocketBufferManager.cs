@@ -5,12 +5,13 @@ using System.Threading;
 
 namespace Bouyei.NetFactory
 {
+    using Base;
     internal class SocketBufferManager
     {
         int wTotalSize=0;
         int wCurIndex=0;
         int wBlockSize = 2048;
-        int wUsed = 0;
+        LockParam lockParam = new LockParam();
         byte[] wBuffer=null;
         Queue<int> freeBufferIndexPool=null;
 
@@ -37,7 +38,10 @@ namespace Bouyei.NetFactory
 
         public void Clear()
         {
-            freeBufferIndexPool.Clear();
+            using (LockWait lwait = new LockWait(ref lockParam))
+            {
+                freeBufferIndexPool.Clear();
+            }
         }
 
         /// <summary>
@@ -47,15 +51,11 @@ namespace Bouyei.NetFactory
         /// <returns></returns>
         public bool SetBuffer(SocketAsyncEventArgs agrs)
         {
-            while (Interlocked.CompareExchange(ref wUsed, 0, 1) != 0)
-            {
-                Thread.Sleep(1);
-            }
-            try
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 if (freeBufferIndexPool.Count > 0)
                 {
-                    agrs.SetBuffer(this.wBuffer,   this.freeBufferIndexPool.Dequeue(), wBlockSize);
+                    agrs.SetBuffer(this.wBuffer, this.freeBufferIndexPool.Dequeue(), wBlockSize);
                 }
                 else
                 {
@@ -67,10 +67,6 @@ namespace Bouyei.NetFactory
                 }
                 return true;
             }
-            finally
-            {
-                Interlocked.Exchange(ref wUsed, 0);
-            }
         }
 
         /// <summary>
@@ -81,13 +77,9 @@ namespace Bouyei.NetFactory
         /// <param name="offset"></param>
         /// <param name="cnt"></param>
         /// <returns></returns>
-        public bool WriteBuffer(SocketAsyncEventArgs agrs, byte[] buffer,int offset,int cnt)
+        public bool WriteBuffer(SocketAsyncEventArgs agrs, byte[] buffer, int offset, int cnt)
         {
-            while (Interlocked.CompareExchange(ref wUsed, 0, 1) != 0)
-            {
-                Thread.Sleep(1);
-            }
-            try
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 //超出缓冲区则不写入
                 if (agrs.Offset + cnt > this.wBuffer.Length)
@@ -104,10 +96,6 @@ namespace Bouyei.NetFactory
 
                 return true;
             }
-            finally
-            {
-                Interlocked.Exchange(ref wUsed, 0);
-            }
         }
 
         /// <summary>
@@ -116,18 +104,10 @@ namespace Bouyei.NetFactory
         /// <param name="args"></param>
         public void FreeBuffer(SocketAsyncEventArgs args)
         {
-            while (Interlocked.CompareExchange(ref wUsed, 0, 1) != 0)
-            {
-                Thread.Sleep(1);
-            }
-            try
+            using (LockWait lwait = new LockWait(ref lockParam))
             {
                 this.freeBufferIndexPool.Enqueue(args.Offset);
                 args.SetBuffer(null, 0, 0);
-            }
-            finally
-            {
-                Interlocked.Exchange(ref wUsed, 0);
             }
         }
 
@@ -140,7 +120,8 @@ namespace Bouyei.NetFactory
         /// <returns></returns>
         public ArraySegment<byte>[] BufferToSegments(byte[] buffer, int offset, int size)
         {
-            if (size <= wBlockSize) return new ArraySegment<byte>[] { new ArraySegment<byte>(buffer, offset, size) };
+            if (size <= wBlockSize)
+                return new ArraySegment<byte>[] { new ArraySegment<byte>(buffer, offset, size) };
 
             int bSize = wBlockSize;
             int bCnt = size / wBlockSize;
