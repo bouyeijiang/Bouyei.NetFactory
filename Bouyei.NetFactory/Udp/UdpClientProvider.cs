@@ -174,16 +174,24 @@ namespace Bouyei.NetFactory.Udp
         public int SendSync(byte[] buffer, Action<int, byte[]> recAct = null, int recBufferSize = 4096)
         {
             int sent = cliSocket.SendTo(buffer, serverIpEndPoint);
-            if (recAct != null && sent > 0)
-            {
-                byte[] recBuffer = new byte[recBufferSize];
+            if (recAct == null || sent == 0) return sent;
 
-                int cnt = cliSocket.ReceiveFrom(recBuffer,
-                    recBuffer.Length,
-                    SocketFlags.None,
-                    ref serverIpEndPoint);
+            byte[] recBuffer = new byte[recBufferSize];
 
+            int cnt = cliSocket.ReceiveFrom(recBuffer,
+                recBuffer.Length,
+                SocketFlags.None,
+                ref serverIpEndPoint);
+
+            if (cnt == 0) return sent;
+
+            if (cnt == recBufferSize)
                 recAct(cnt, recBuffer);
+            else
+            {
+                byte[] rbuffer = new byte[cnt];
+                Buffer.BlockCopy(recBuffer, 0, rbuffer, 0, cnt);
+                recAct(cnt, rbuffer);
             }
             return sent;
         }
@@ -203,11 +211,20 @@ namespace Bouyei.NetFactory.Udp
                     buffer.Length,
                     SocketFlags.None,
                     ref serverIpEndPoint);
-                if (cnt > 0)
+
+                if (cnt <=0) break;
+
+                if (cnt == recBufferSize)
                 {
                     recAct(cnt, buffer);
                 }
-            } while (cnt > 0);
+                else
+                {
+                    byte[] rbuffer = new byte[cnt];
+                    Buffer.BlockCopy(buffer, 0, rbuffer, 0, cnt);
+                    recAct(cnt, rbuffer);
+                }
+            } while (true);
         }
 
         /// <summary>

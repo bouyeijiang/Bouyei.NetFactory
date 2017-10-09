@@ -292,7 +292,7 @@ namespace Bouyei.NetFactory
         {
             if (NetProviderType == NetProviderType.Tcp)
             {
-                tcpClientProvider.SendSync(buffer, recAct,recBufferSize);
+                tcpClientProvider.SendSync(buffer,recBufferSize, recAct);
             }
             else if (NetProviderType == NetProviderType.Udp)
             {

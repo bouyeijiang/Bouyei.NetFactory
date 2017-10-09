@@ -289,7 +289,8 @@ namespace Bouyei.NetFactory.Tcp
         /// <param name="recBufferSize"></param>
         /// <param name="recAct"></param>
         /// <returns></returns>
-        public int SendSync(byte[] buffer, Action<int, byte[]> recAct = null, int recBufferSize = 4096)
+        public int SendSync(byte[] buffer, int recBufferSize = 4096,
+            Action<int, byte[]> recAct = null)
         {
             if (channelProviderState != ChannelProviderType.Sync)
             {
@@ -297,14 +298,22 @@ namespace Bouyei.NetFactory.Tcp
             }
 
             int sent = cliSocket.Send(buffer);
-            if (recAct != null && sent > 0)
-            {
-                byte[] recBuffer = new byte[recBufferSize];
+            if (recAct == null || sent == 0) return sent;
 
-                int cnt = cliSocket.Receive(recBuffer, recBuffer.Length, 0);
+            byte[] recBuffer = new byte[recBufferSize];
 
+            int cnt = cliSocket.Receive(recBuffer, recBuffer.Length, 0);
+            if (cnt == 0) return sent;
+
+            if (cnt == recBufferSize)
                 recAct(cnt, recBuffer);
+            else
+            {
+                byte[] dstBuffer = new byte[cnt];
+                Buffer.BlockCopy(recBuffer, 0, dstBuffer, 0, cnt);
+                recAct(cnt, dstBuffer);
             }
+
             return sent;
         }
 
@@ -317,21 +326,28 @@ namespace Bouyei.NetFactory.Tcp
         /// <param name="recBufferSize"></param>
         /// <param name="recAct"></param>
         /// <returns></returns>
-        public int SendSync(byte[] buffer,int offset,int size,int recBufferSize=4096
-            ,Action<int,byte[]>recAct=null)
+        public int SendSync(byte[] buffer, int offset, int size, int recBufferSize = 4096
+            , Action<int, byte[]> recAct = null)
         {
             if (channelProviderState != ChannelProviderType.Sync)
             {
                 throw new Exception("需要使用同步连接...ConnectSync");
             }
             int sent = cliSocket.Send(buffer, offset, size, SocketFlags.None);
-            if (recAct != null && sent > 0)
-            {
-                byte[] recBuffer = new byte[recBufferSize];
+            if (recAct == null || sent == 0) return sent;
 
-                int cnt = cliSocket.Receive(recBuffer, recBuffer.Length, 0);
+            byte[] recBuffer = new byte[recBufferSize];
 
+            int cnt = cliSocket.Receive(recBuffer, recBuffer.Length, 0);
+            if (cnt == 0) return sent;
+
+            if (cnt == recBufferSize)
                 recAct(cnt, recBuffer);
+            else
+            {
+                byte[] rbuffer = new byte[cnt];
+                Buffer.BlockCopy(recBuffer, 0, rbuffer, 0, cnt);
+                recAct(cnt, rbuffer);
             }
             return sent;
         }
@@ -348,20 +364,20 @@ namespace Bouyei.NetFactory.Tcp
         /// <param name="recAct"></param>
         /// <returns></returns>
         public int SendSync(byte[] buffer, int offset, int size
-            ,ref int recOffset,ref int recSize,ref byte[] recBuffer
-            ,Action<int> recAct = null)
+            , ref int recOffset, ref int recSize, ref byte[] recBuffer
+            , Action<int> recAct = null)
         {
             if (channelProviderState != ChannelProviderType.Sync)
             {
                 throw new Exception("需要使用同步连接...ConnectSync");
             }
             int sent = cliSocket.Send(buffer, offset, size, SocketFlags.None);
-            if (recAct != null && sent > 0)
-            {
-                int cnt = cliSocket.Receive(recBuffer, recOffset, recSize, 0);
+            if (recAct == null || sent == 0) return sent;
 
-                recAct(cnt);
-            }
+            int cnt = cliSocket.Receive(recBuffer, recOffset, recSize, 0);
+
+            recAct(cnt);
+
             return sent;
         }
 
@@ -383,11 +399,19 @@ namespace Bouyei.NetFactory.Tcp
                 if (cliSocket.Connected == false) break;
 
                 cnt = cliSocket.Receive(buffer, buffer.Length, 0);
-                if (cnt > 0)
+                if (cnt <=0) break;
+
+                if (cnt == recBufferSize)
                 {
                     recAct(cnt, buffer);
                 }
-            } while (cnt > 0);
+                else
+                {
+                    byte[] rbuffer = new byte[cnt];
+                    Buffer.BlockCopy(buffer, 0, rbuffer, 0, cnt);
+                    recAct(cnt, rbuffer);
+                }
+            } while (true);
         }
 
         /// <summary>
