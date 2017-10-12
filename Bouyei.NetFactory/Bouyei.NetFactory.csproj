@@ -49,17 +49,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Base\LockWait.cs" />
-    <Compile Include="INetClientProvider.cs" />
-    <Compile Include="INetProtocolProvider.cs" />
-    <Compile Include="INetServerProvider.cs" />
-    <Compile Include="INetPacketProvider.cs" />
-    <Compile Include="INetTokenPoolProvider.cs" />
-    <Compile Include="NetClientProvider.cs" />
-    <Compile Include="DelegateHandler.cs" />
-    <Compile Include="NetTokenPoolProvider.cs" />
-    <Compile Include="NetPacketProvider.cs" />
-    <Compile Include="NetProtocolProvider.cs" />
-    <Compile Include="NetServerProvider.cs" />
+    <Compile Include="Instance\INetClientProvider.cs" />
+    <Compile Include="Instance\INetProtocolProvider.cs" />
+    <Compile Include="Instance\INetServerProvider.cs" />
+    <Compile Include="Instance\INetPacketProvider.cs" />
+    <Compile Include="Instance\INetTokenPoolProvider.cs" />
+    <Compile Include="Interface\NetClientProvider.cs" />
+    <Compile Include="Common\DelegateHandler.cs" />
+    <Compile Include="Interface\NetTokenPoolProvider.cs" />
+    <Compile Include="Interface\NetPacketProvider.cs" />
+    <Compile Include="Interface\NetProtocolProvider.cs" />
+    <Compile Include="Interface\NetServerProvider.cs" />
     <Compile Include="Pools\TokenConnectionManager.cs" />
     <Compile Include="Pools\SocketBufferManager.cs" />
     <Compile Include="Pools\SocketTokenManager.cs" />
@@ -70,15 +70,15 @@
     <Compile Include="Protocols\PacketAttribute.cs" />
     <Compile Include="Protocols\PacketHeader.cs" />
     <Compile Include="Protocols\PacketQueue.cs" />
-    <Compile Include="SocketEnum.cs" />
-    <Compile Include="SocketToken.cs" />
+    <Compile Include="Base\SocketEnum.cs" />
+    <Compile Include="Base\SocketToken.cs" />
     <Compile Include="Tcp\TcpClientProvider.cs" />
     <Compile Include="Tcp\TcpServerProvider.cs" />
     <Compile Include="Udp\SocketReceive.cs" />
     <Compile Include="Udp\SocketSend.cs" />
     <Compile Include="Udp\UdpClientProvider.cs" />
     <Compile Include="Udp\UdpServerProvider.cs" />
-    <Compile Include="Utils.cs" />
+    <Compile Include="Common\Utils.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="netfactory.pfx" />
