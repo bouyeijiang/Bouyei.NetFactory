@@ -19,7 +19,7 @@ namespace Bouyei.NetFactory.Tcp
         private SocketTokenManager<SocketAsyncEventArgs> sendTokenManager = null;
         private SocketBufferManager sBufferManager = null;
         private ChannelProviderType channelProviderState = ChannelProviderType.Async;
-        private ManualResetEvent mReset = new ManualResetEvent(false);
+        private AutoResetEvent mReset = new AutoResetEvent(false);
         #endregion
 
         #region property
@@ -124,7 +124,6 @@ namespace Bouyei.NetFactory.Tcp
                 
                 isConnected = false;
                 channelProviderState = ChannelProviderType.Async;
-                InitializePool(cliConSend);
 
                 IPEndPoint ips = new IPEndPoint(IPAddress.Parse(ip), port);
 
@@ -133,6 +132,7 @@ namespace Bouyei.NetFactory.Tcp
             catch (Exception ex)
             {
                 Close();
+                isConnected = false;
                 throw ex;
             }
         }
@@ -161,15 +161,13 @@ namespace Bouyei.NetFactory.Tcp
 
                 mReset.WaitOne(cliConnectTimeout);
                 isConnected = cliSocket.Connected;
-                
-                if (isConnected)
-                    InitializePool(cliConSend);
 
                 return isConnected;
             }
             catch (Exception ex)
             {
-                cliSocket.Dispose();
+                Close();
+                isConnected = false;
                 throw ex;
             }
         }
@@ -420,6 +418,7 @@ namespace Bouyei.NetFactory.Tcp
         public void Disconnect()
         {
             Close();
+            isConnected = false;
         }
 
         #endregion
@@ -549,6 +548,10 @@ namespace Bouyei.NetFactory.Tcp
                     RecievedCallback(sToken, realBytes);
                 }
             }
+            if (!e.AcceptSocket.ReceiveAsync(e))
+            {
+                ProcessReceiveHandler(e);
+            }
         }
 
         /// <summary>
@@ -560,10 +563,10 @@ namespace Bouyei.NetFactory.Tcp
             try
             {
                 isConnected = (e.SocketError == SocketError.Success);
-                if (channelProviderState == ChannelProviderType.AsyncWait) mReset.Set();//异步等待连接
-
                 if (isConnected)
                 {
+                    InitializePool(cliConSend);
+
                     e.SetBuffer(cliRecBuffer, 0, cliRecBufferSize);
                     if (ConnectedCallback != null)
                     {
@@ -581,6 +584,8 @@ namespace Bouyei.NetFactory.Tcp
                 {
                     ProcessDisconnectEvent(e);
                 }
+                if (channelProviderState == ChannelProviderType.AsyncWait)
+                    mReset.Set();
             }
             catch
             { }

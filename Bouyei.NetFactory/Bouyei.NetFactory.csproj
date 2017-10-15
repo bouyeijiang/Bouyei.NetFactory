@@ -49,17 +49,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Base\LockWait.cs" />
-    <Compile Include="Instance\INetClientProvider.cs" />
-    <Compile Include="Instance\INetProtocolProvider.cs" />
-    <Compile Include="Instance\INetServerProvider.cs" />
-    <Compile Include="Instance\INetPacketProvider.cs" />
-    <Compile Include="Instance\INetTokenPoolProvider.cs" />
-    <Compile Include="Interface\NetClientProvider.cs" />
+    <Compile Include="Interface\INetClientProvider.cs" />
+    <Compile Include="Interface\INetProtocolProvider.cs" />
+    <Compile Include="Interface\INetServerProvider.cs" />
+    <Compile Include="Interface\INetPacketProvider.cs" />
+    <Compile Include="Interface\INetTokenPoolProvider.cs" />
+    <Compile Include="Instance\NetClientProvider.cs" />
     <Compile Include="Common\DelegateHandler.cs" />
-    <Compile Include="Interface\NetTokenPoolProvider.cs" />
-    <Compile Include="Interface\NetPacketProvider.cs" />
-    <Compile Include="Interface\NetProtocolProvider.cs" />
-    <Compile Include="Interface\NetServerProvider.cs" />
+    <Compile Include="Instance\NetTokenPoolProvider.cs" />
+    <Compile Include="Instance\NetPacketProvider.cs" />
+    <Compile Include="Instance\NetProtocolProvider.cs" />
+    <Compile Include="Instance\NetServerProvider.cs" />
     <Compile Include="Pools\TokenConnectionManager.cs" />
     <Compile Include="Pools\SocketBufferManager.cs" />
     <Compile Include="Pools\SocketTokenManager.cs" />

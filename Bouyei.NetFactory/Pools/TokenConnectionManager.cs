@@ -23,7 +23,7 @@ namespace Bouyei.NetFactory.Pools
         {
             if (period < 2) this.period = 2;
             else this.period = period;
-
+ 
             lockParam = new LockParam();
             int _period = GetPeriodSeconds();
             list = new LinkedList<NetConnectionToken>();

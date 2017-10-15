@@ -15,10 +15,11 @@ namespace Bouyei.NetFactoryDemo
     {
         static void Main(string[] args)
         {
-            //ConnectionPoolTest();
+            //ConnectDemo();
+            ConnectionPoolTest();
             //ProtocolsDemo();
             //UdpDemo();
-            TcpDemo();
+            //TcpDemo();
             //ConnectionPoolManagerDemo();
         }
 
@@ -272,25 +273,35 @@ namespace Bouyei.NetFactoryDemo
                     {
                         // Console.WriteLine(s.TokenIpEndPoint + " client disconnected");
                     });
+                    clientProvider.ReceiveOffsetHandler = new OnReceiveOffsetHandler((SocketToken stoken,byte[]buffer,int offset,int size) => {
+                        Console.WriteLine(stoken.TokenIpEndPoint + Encoding.Default.GetString(buffer, offset, size));
+                    });
                     bool isConnected = clientProvider.ConnectTo(port, "127.0.0.1");
 
                     Console.WriteLine(isConnected);
                 }
+                send:
                 Console.WriteLine(poolProvider.Count);
                 string info = Console.ReadLine();
-                if (info == "again")
+               
+                if (info == "send")
                 {
-                    while (poolProvider.Count > 0)
+                   for(int i=0;i<poolProvider.Count;++i)
                     {
+                        var item=poolProvider.GetTokenById(i);
+                        if (item == null) continue;
+                        
+                        serverProvider.Send(item.Token, Encoding.Default.GetBytes(DateTime.Now.ToString()));
+                        Thread.Sleep(1000);
                         // poolProvider.Clear(true);
-                        var item = poolProvider.GetTopToken();
-                        if (item != null)
-                        {
-                            serverProvider.CloseToken(item.Token);
-                            poolProvider.RemoveToken(item, false);
-                        }
+                        //var item = poolProvider.GetTopToken();
+                        //if (item != null)
+                        //{
+                        //    serverProvider.CloseToken(item.Token);
+                        //    poolProvider.RemoveToken(item, false);
+                        //}
                     }
-                    goto again;
+                    goto send;
                 }
                 else if (info == "stop")
                 {
@@ -299,6 +310,45 @@ namespace Bouyei.NetFactoryDemo
                 }
                 Console.ReadKey();
             }
+        }
+
+        private static void ConnectDemo()
+        {
+            try
+            {
+                INetServerProvider serverProvider = NetServerProvider.CreateProvider(4096, 2);
+                serverProvider.DisconnectedHandler = new OnDisconnectedHandler((SocketToken stoken) => {
+                    Console.WriteLine("client disconnected" + stoken.TokenIpEndPoint);
+                });
+                bool isOk = serverProvider.Start(12345);
+                if (isOk)
+                {
+                    INetClientProvider clientProvider = NetClientProvider.CreateProvider();
+                    clientProvider.ConnectedHandler = new OnConnectedHandler((SocketToken stoken, bool isConnected) =>
+                    {
+                        Console.WriteLine("connected" + stoken.TokenIpEndPoint);
+                    });
+                    clientProvider.DisconnectedHandler = new OnDisconnectedHandler((SocketToken stoken) =>
+                    {
+                        Console.WriteLine("disconnected" + stoken.TokenIpEndPoint);
+                    });
+                    again:
+                    isOk = clientProvider.ConnectTo(12345, "127.0.0.1");
+                    Console.WriteLine(isOk);
+                    string info = Console.ReadLine();
+                    if (info == "again")
+                    {
+                        clientProvider.Disconnect();
+                        goto again;
+                    }
+                    Console.WriteLine("exit");
+                }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            Console.Read();
         }
     }
 }
