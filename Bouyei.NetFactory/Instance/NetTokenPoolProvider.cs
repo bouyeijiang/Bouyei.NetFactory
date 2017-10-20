@@ -10,14 +10,14 @@ namespace Bouyei.NetFactory
 
     public class NetTokenPoolProvider:INetTokenPoolProvider
     {
-        TokenConnectionManager tokenConnectionManager = null;
+        TokenConnectionManager tokenManager = null;
         public int ConnectionTimeout
         {
-            get { return tokenConnectionManager.ConnectionTimeout; }
-            set { tokenConnectionManager.ConnectionTimeout = value; }
+            get { return tokenManager.ConnectionTimeout; }
+            set { tokenManager.ConnectionTimeout = value; }
         }
 
-        public int Count { get { return tokenConnectionManager.Count; } }
+        public int Count { get { return tokenManager.Count; } }
 
         public static NetTokenPoolProvider CreateProvider(int taskExecutePeriod)
         {
@@ -26,47 +26,56 @@ namespace Bouyei.NetFactory
 
         public NetTokenPoolProvider(int taskExecutePeriod)
         {
-            tokenConnectionManager = new TokenConnectionManager(taskExecutePeriod);
+            tokenManager = new TokenConnectionManager(taskExecutePeriod);
         }
 
         public void TimerEnable(bool isContinue)
         {
-            tokenConnectionManager.TimerEnable(isContinue);
+            tokenManager.TimerEnable(isContinue);
         }
 
         public NetConnectionToken GetTopToken()
         {
-           return tokenConnectionManager.GetTopToken();
+           return tokenManager.GetTopToken();
         }
 
         public void InsertToken(NetConnectionToken ncToken)
         {
-            tokenConnectionManager.InsertToken(ncToken);
+            tokenManager.InsertToken(ncToken);
+        }
+
+
+        public IEnumerable<NetConnectionToken> Reader()
+        {
+            foreach (var item in tokenManager.ReadNext())
+            {
+                yield return item;
+            }
         }
 
         public bool RemoveToken(NetConnectionToken ncToken,bool isClose=true)
         {
-          return  tokenConnectionManager.RemoveToken(ncToken,isClose);
+          return  tokenManager.RemoveToken(ncToken,isClose);
         }
 
         public NetConnectionToken GetTokenById(int Id)
         {
-          return  tokenConnectionManager.GetTokenById(Id);
+          return  tokenManager.GetTokenById(Id);
         }
 
         public NetConnectionToken GetTokenBySocketToken(SocketToken sToken)
         {
-            return tokenConnectionManager.GetTokenBySocketToken(sToken); 
+            return tokenManager.GetTokenBySocketToken(sToken); 
         }
 
         public bool RefreshExpireToken(SocketToken sToken)
         {
-            return tokenConnectionManager.RefreshConnectionToken(sToken);
+            return tokenManager.RefreshConnectionToken(sToken);
         }
 
         public void Clear(bool isClose=true)
         {
-            tokenConnectionManager.Clear(isClose);
+            tokenManager.Clear(isClose);
         }
     }
 }

@@ -18,6 +18,7 @@ namespace Bouyei.NetFactory
         void Clear(bool isClose = true);
         NetConnectionToken GetTokenById(int Id);
         NetConnectionToken GetTokenBySocketToken(SocketToken sToken);
+        IEnumerable<NetConnectionToken> Reader();
         bool RefreshExpireToken(SocketToken sToken);
     }
 }

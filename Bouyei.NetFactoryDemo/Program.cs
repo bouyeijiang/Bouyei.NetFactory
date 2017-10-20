@@ -15,8 +15,8 @@ namespace Bouyei.NetFactoryDemo
     {
         static void Main(string[] args)
         {
-            //ConnectDemo();
-            ConnectionPoolTest();
+            ConnectDemo();
+            //ConnectionPoolTest();
             //ProtocolsDemo();
             //UdpDemo();
             //TcpDemo();
@@ -273,7 +273,8 @@ namespace Bouyei.NetFactoryDemo
                     {
                         // Console.WriteLine(s.TokenIpEndPoint + " client disconnected");
                     });
-                    clientProvider.ReceiveOffsetHandler = new OnReceiveOffsetHandler((SocketToken stoken,byte[]buffer,int offset,int size) => {
+                    clientProvider.ReceiveOffsetHandler = new OnReceiveOffsetHandler((SocketToken stoken, byte[] buffer, int offset, int size) =>
+                    {
                         Console.WriteLine(stoken.TokenIpEndPoint + Encoding.Default.GetString(buffer, offset, size));
                     });
                     bool isConnected = clientProvider.ConnectTo(port, "127.0.0.1");
@@ -316,10 +317,16 @@ namespace Bouyei.NetFactoryDemo
         {
             try
             {
+                SocketToken sToken = null;
                 INetServerProvider serverProvider = NetServerProvider.CreateProvider(4096, 2);
                 serverProvider.DisconnectedHandler = new OnDisconnectedHandler((SocketToken stoken) => {
                     Console.WriteLine("client disconnected" + stoken.TokenIpEndPoint);
                 });
+                serverProvider.AcceptHandler = new OnAcceptHandler((token) => {
+                    Console.WriteLine("accpet" + token.TokenIpEndPoint);
+                    sToken = token;
+                });
+
                 bool isOk = serverProvider.Start(12345);
                 if (isOk)
                 {
@@ -338,7 +345,8 @@ namespace Bouyei.NetFactoryDemo
                     string info = Console.ReadLine();
                     if (info == "again")
                     {
-                        clientProvider.Disconnect();
+                        //clientProvider.Disconnect();
+                        serverProvider.CloseToken(sToken);
                         goto again;
                     }
                     Console.WriteLine("exit");

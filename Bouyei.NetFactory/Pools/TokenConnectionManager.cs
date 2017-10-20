@@ -64,6 +64,17 @@ namespace Bouyei.NetFactory.Pools
             }
         }
 
+        public IEnumerable<NetConnectionToken> ReadNext()
+        {
+            using(LockWait lwait=new LockWait(ref lockParam))
+            {
+                foreach (var l in list)
+                {
+                    yield return l;
+                }
+            }
+        }
+
         public void InsertToken(NetConnectionToken ncToken)
         {
             using (LockWait lwait = new LockWait(ref lockParam))
@@ -77,7 +88,6 @@ namespace Bouyei.NetFactory.Pools
             using (LockWait lwait = new LockWait(ref lockParam))
             {
                 if (isClose) ncToken.Token.Close();
-
                 return list.Remove(ncToken);
             }
         }
