@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <SignAssembly>false</SignAssembly>
+    <AssemblyOriginatorKeyFile>netfactory.pfx</AssemblyOriginatorKeyFile>
+    <Version>1.2.2</Version>
+    <AssemblyVersion>1.2.2.2</AssemblyVersion>
+    <FileVersion>1.2.2.2</FileVersion>
+    <Copyright>bouyei</Copyright>
+    <PackageProjectUrl>https://gitee.com/bouyei/Bouyei.NetProviderFactory</PackageProjectUrl>
+    <PackageLicenseUrl>https://gitee.com/bouyei/Bouyei.NetProviderFactory</PackageLicenseUrl>
+    <RepositoryUrl>https://gitee.com/bouyei/Bouyei.NetProviderFactory</RepositoryUrl>
+    <Description>hight performance socket library,base on SocketAsyncEventArgs(IOCP)</Description>
+    <PackageReleaseNotes>base on SocketAsyncEventArgs(IOCP)</PackageReleaseNotes>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <Optimize>false</Optimize>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System">
+      <HintPath>System</HintPath>
+    </Reference>
+    <Reference Include="System.Data">
+      <HintPath>System.Data</HintPath>
+    </Reference>
+    <Reference Include="System.Drawing">
+      <HintPath>System.Drawing</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
