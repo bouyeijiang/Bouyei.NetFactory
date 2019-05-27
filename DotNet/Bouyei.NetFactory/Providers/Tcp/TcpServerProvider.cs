@@ -209,7 +209,6 @@ namespace Bouyei.NetFactory.Tcp
                     if (tArgs == null) return false;
 
                     tArgs.UserToken = segToken.sToken;
-                    tArgs.RemoteEndPoint = segToken.sToken.TokenSocket.RemoteEndPoint;
 
                     if (!sendBufferManager.WriteBuffer(tArgs, seg.Array, seg.Offset, seg.Count))
                     {
@@ -218,9 +217,7 @@ namespace Bouyei.NetFactory.Tcp
                         throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBufferManager.BlockSize));
                     }
 
-                   
-
-                    isWillEvent &=socket.SendAsync(tArgs);
+                    isWillEvent &=segToken.sToken.SendAsync(tArgs);
                     if (!isWillEvent)
                     {
                         ProcessSentCallback(tArgs);

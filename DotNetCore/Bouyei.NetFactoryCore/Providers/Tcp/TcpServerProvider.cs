@@ -204,6 +204,8 @@ namespace Bouyei.NetFactoryCore.Tcp
 
                 foreach (var seg in segItems)
                 {
+                    if (!segToken.sToken.TokenSocket.Connected) return false;
+
                     var tArgs = GetSocketAsyncFromSendPool(waiting, segToken.sToken.TokenSocket);
                     if (tArgs == null) return false;
 
@@ -214,8 +216,6 @@ namespace Bouyei.NetFactoryCore.Tcp
 
                         throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBufferManager.BlockSize));
                     }
-
-                    if (!segToken.sToken.TokenSocket.Connected) return false;
 
                     isWillEvent &= segToken.sToken.SendAsync(tArgs);
                     if (!isWillEvent)
@@ -402,10 +402,17 @@ namespace Bouyei.NetFactoryCore.Tcp
             {
                 ReceivedCallback(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
             }
-            //继续投递下一个接受请求
-            if (!sToken.TokenSocket.ReceiveAsync(e))
+            if (sToken.TokenSocket.Connected)
             {
-                this.ProcessReceiveCallback(e);
+                //继续投递下一个接受请求
+                if (!sToken.TokenSocket.ReceiveAsync(e))
+                {
+                    this.ProcessReceiveCallback(e);
+                }
+            }
+            else
+            {
+                ProcessDisconnectCallback(e);
             }
         }
 

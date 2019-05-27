@@ -13,9 +13,9 @@ namespace NetFactoryCoreDemo
     {
         static void Main(string[] args)
         {
-            //WebSocketDemo();
+           WebSocketDemo();
             // TcpDemo();
-            UdpDemo();
+            //UdpDemo();
             //ConnectionPoolTest();
         }
 
@@ -30,8 +30,8 @@ namespace NetFactoryCoreDemo
             {
                 try
                 {
-                    string info = Encoding.UTF8.GetString(session.Data.buffer, session.Data.offset, session.Data.size);
-                    Console.WriteLine(info);
+                    Console.WriteLine("from client "+Encoding.Default.GetString(session.Data.buffer,session.Data.offset,session.Data.size));
+                    serverSocket.Send(new SegmentToken(session.sToken, Encoding.Default.GetBytes("i'm server")));
                 }
                 catch (Exception ex)
                 {
@@ -100,36 +100,6 @@ namespace NetFactoryCoreDemo
                         //if (isTrue == false) break;
                         //break;
                     }
-                    //byte[] buffer = System.IO.File.ReadAllBytes("TRANSACTION_EXTRANSACTIONUPLOAD_REQ_52_1000_20171031143825836.json");
-
-                    //clientSocket.Send(buffer);
-
-                    //Console.WriteLine("complete:sent:" + sentlength.ToString() + "rec:" + reclength.ToString());
-                    //int ab = 0;
-                    //while (true)
-                    //{
-                    //     Thread.Sleep(3000);
-                    //    Console.WriteLine("retry :pool:"+clientSocket.BufferPoolCount);
-                    //    if (ab++ >= 1) break;
-                    //}
-                    //var c = Console.ReadKey();
-                    //if (c.KeyChar == 'r') goto again;
-
-                    serverSocket.Stop();
-                    bool start = serverSocket.Start(port);
-
-                    clientSocket.Send(new SegmentOffset(Encoding.Default.GetBytes("dfasdfasdfa第三方")), false);
-                    clientSocket.Disconnect();
-
-                    var item = poolProvider.GetTopToken();
-                    if(item!=null)
-                    serverSocket.Send(new SegmentToken(item.Token, Encoding.Default.GetBytes("bbb")), false);
-                  
-                     
-                   //var item= poolProvider.GetTopToken();
-                   //item.Token.Close();
-                    //serverSocket.Stop();
-                    // clientSocket.Dispose();
                 }
             }
             Console.ReadKey();

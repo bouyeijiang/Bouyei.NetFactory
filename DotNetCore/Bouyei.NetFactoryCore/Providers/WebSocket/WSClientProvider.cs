@@ -29,7 +29,7 @@ namespace Bouyei.NetFactoryCore.WebSocket
         {
             clientProvider = new TcpClientProvider(bufferSize, blocks);
             clientProvider.DisconnectedCallback = new OnDisconnectedHandler(DisconnectedHandler);
-            clientProvider.ReceiveOffsetCallback = new OnReceivedSegmentHandler(ReceiveSegmentHandler);
+            clientProvider.ReceiveOffsetCallback = new OnReceivedSegmentHandler(OnReceivedEventHandler);
             clientProvider.SentCallback = new OnSentHandler(SentHandler);
         }
 
@@ -108,12 +108,6 @@ namespace Bouyei.NetFactoryCore.WebSocket
             if (OnDisconnected != null) OnDisconnected(sToken);
         }
 
-        private void ReceiveSegmentHandler(SegmentToken session)
-        {
-            if (OnReceivedBytes != null)
-                OnReceiveEvent(session);
-        }
-
         private void SentHandler(SegmentToken session)
         {
             if (OnSent != null){
@@ -126,7 +120,7 @@ namespace Bouyei.NetFactoryCore.WebSocket
 
         //}
 
-        private void OnReceiveEvent(SegmentToken session)
+        private void OnReceivedEventHandler(SegmentToken session)
         {
             if (IsConnected == false)
             {
