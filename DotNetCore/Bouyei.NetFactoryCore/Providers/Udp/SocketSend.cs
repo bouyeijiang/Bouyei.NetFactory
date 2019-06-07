@@ -119,7 +119,6 @@ namespace Bouyei.NetFactoryCore.Udp
                         throw new Exception("发送缓冲池已用完,等待回收超时...");
 
                     tArgs.RemoteEndPoint = remoteEP;
-                    tArgs.UserToken = socket;
 
                     if (!sendBufferManager.WriteBuffer(tArgs, seg.Array, seg.Offset, seg.Count))
                     {
@@ -128,17 +127,14 @@ namespace Bouyei.NetFactoryCore.Udp
                         throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBufferManager.BlockSize));
                     }
 
-                    if (tArgs.RemoteEndPoint != null)
+                    isWillEvent &= socket.SendToAsync(tArgs);
+                    if (!isWillEvent)
                     {
-                        isWillEvent &= socket.SendToAsync(tArgs);
-                        if (!isWillEvent)
-                        {
-                            ProcessSent(tArgs);
-                        }
+                        ProcessSent(tArgs);
                     }
                     Thread.Sleep(5);
                 }
-               return isWillEvent;
+                return isWillEvent;
             }
             catch (Exception ex)
             {

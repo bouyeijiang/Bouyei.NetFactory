@@ -33,9 +33,9 @@ namespace Bouyei.NetFactoryCore.Providers.Tcp
             receiveBuffer = new byte[size];
         }
 
-        protected void CreateTcpSocket(int port,string ip)
+        protected void CreateTcpSocket(int port,IPAddress ip)
         {
-            ipEndPoint =  new IPEndPoint(IPAddress.Parse(ip), port);
+            ipEndPoint =  new IPEndPoint(ip, port);
             Socket socket = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp)
             {
                 LingerState = new LingerOption(true, 0),

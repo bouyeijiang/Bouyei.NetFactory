@@ -29,7 +29,7 @@ namespace Bouyei.NetFactoryCore.Udp
         /// <summary>
         /// 接收回调处理
         /// </summary>
-        public OnReceivedHandler ReceiveCallbackHandler { get; set; }
+        public OnReceivedHandler ReceivedCallbackHandler { get; set; }
 
         /// <summary>
         /// 发送回调处理
@@ -38,7 +38,7 @@ namespace Bouyei.NetFactoryCore.Udp
         /// <summary>
         /// 接收缓冲区回调
         /// </summary>
-        public OnReceivedSegmentHandler ReceiveOffsetHandler { get; set; }
+        public OnReceivedSegmentHandler ReceivedOffsetHandler { get; set; }
         #endregion
 
         #region public method
@@ -56,7 +56,7 @@ namespace Bouyei.NetFactoryCore.Udp
             {
                 DisposeSocketPool();
                 SafeClose();
-                
+
                 _isDisposed = true;
             }
         }
@@ -74,11 +74,10 @@ namespace Bouyei.NetFactoryCore.Udp
         /// 构造方法
         /// </summary>
         public UdpClientProvider(int bufferSizeByConnection, int maxNumberOfConnections)
-            :base(bufferSizeByConnection)
+            : base(bufferSizeByConnection)
         {
             this.maxNumberOfConnections = maxNumberOfConnections;
             this.bufferSizeByConnection = bufferSizeByConnection;
-            Initialize();
         }
 
         public void Disconnect()
@@ -97,12 +96,14 @@ namespace Bouyei.NetFactoryCore.Udp
         {
             Close();
 
-            CreateUdpSocket(port, ip);
+            CreateUdpSocket(port, IPAddress.Parse(ip));
+
+            Initialize();
 
             return true;
         }
 
- 
+
         public bool Send(SegmentOffset sendSegment, bool waiting = true)
         {
             try
@@ -199,8 +200,11 @@ namespace Bouyei.NetFactoryCore.Udp
                 sArgs.Completed += IO_Completed;
                 sArgs.UserToken = socket;
                 sArgs.RemoteEndPoint = ipEndPoint;
+                sArgs.AcceptSocket = socket;
                 sArgs.SetBuffer(receiveBuffer, 0, bufferSizeByConnection);
-                if (!socket.ReceiveFromAsync(sArgs))
+                bool isAsync = socket.ReceiveFromAsync(sArgs);
+
+                if (!isAsync)
                 {
                     ProcessReceive(sArgs);
                 }
@@ -226,6 +230,7 @@ namespace Bouyei.NetFactoryCore.Udp
                 SocketAsyncEventArgs sendArgs = new SocketAsyncEventArgs();
                 sendArgs.Completed += IO_Completed;
                 sendArgs.UserToken = socket;
+
                 sendBufferManager.SetBuffer(sendArgs);
                 sendTokenManager.Set(sendArgs);
             }
@@ -238,6 +243,8 @@ namespace Bouyei.NetFactoryCore.Udp
                 socket.Shutdown(SocketShutdown.Both);
                 socket.Close();
                 socket.Dispose();
+
+                isConnected = false;
             }
         }
 
@@ -254,16 +261,15 @@ namespace Bouyei.NetFactoryCore.Udp
             {
                 if (e.SocketError != SocketError.Success || e.BytesTransferred == 0)
                     return;
- 
+
                 //缓冲区偏移量返回
-                if (ReceiveOffsetHandler != null)
-                {
-                    ReceiveOffsetHandler(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
-                }
+                if (ReceivedOffsetHandler != null)
+                    ReceivedOffsetHandler(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
+
                 //截取后返回
-                if (ReceiveCallbackHandler != null)
+                if (ReceivedCallbackHandler != null)
                 {
-                    ReceiveCallbackHandler(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
+                    ReceivedCallbackHandler(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
                 }
             }
             catch (Exception ex)
@@ -275,7 +281,7 @@ namespace Bouyei.NetFactoryCore.Udp
                 if (e.SocketError == SocketError.Success)
                 {
                     //继续下一个接收
-                    if (!sToken.TokenSocket.ReceiveFromAsync(e))
+                    if (!socket.ReceiveFromAsync(e))
                     {
                         ProcessReceive(e);
                     }
@@ -288,9 +294,13 @@ namespace Bouyei.NetFactoryCore.Udp
             try
             {
                 bool isSuccess = e.SocketError == SocketError.Success;
-                if(isConnected==false && isSuccess)
+
+                if (isConnected == false && isSuccess)
                 {
+
                     StartReceive();
+
+                    isConnected = true;
                 }
 
                 if (SentCallbackHandler != null)
@@ -317,9 +327,9 @@ namespace Bouyei.NetFactoryCore.Udp
         {
             switch (e.LastOperation)
             {
+                case SocketAsyncOperation.Receive:
                 case SocketAsyncOperation.ReceiveFrom:
                 case SocketAsyncOperation.ReceiveMessageFrom:
-                case SocketAsyncOperation.Receive:
                     ProcessReceive(e);
                     break;
                 case SocketAsyncOperation.SendTo:

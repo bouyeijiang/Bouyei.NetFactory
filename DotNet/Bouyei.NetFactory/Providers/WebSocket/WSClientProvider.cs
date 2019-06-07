@@ -28,7 +28,7 @@ namespace Bouyei.NetFactory.WebSocket
         {
             clientProvider = new TcpClientProvider(bufferSize, blocks);
             clientProvider.DisconnectedCallback = new OnDisconnectedHandler(DisconnectedHandler);
-            clientProvider.ReceiveOffsetCallback = new OnReceivedSegmentHandler(ReceivedHanlder);
+            clientProvider.ReceivedOffsetCallback = new OnReceivedSegmentHandler(ReceivedHanlder);
             clientProvider.SentCallback = new OnSentHandler(SentHandler);
         }
 

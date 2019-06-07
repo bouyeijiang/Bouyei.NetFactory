@@ -18,6 +18,7 @@ namespace Bouyei.NetFactory.Providers.Udp
     public class UdpSocket
     {
         internal Socket socket = null;
+        internal bool Broadcast = false;
         protected bool isConnected = false;
         protected EndPoint ipEndPoint = null;
 
@@ -26,10 +27,12 @@ namespace Bouyei.NetFactory.Providers.Udp
         protected int receiveTimeout = 1000 * 60 * 30;
         protected int sendTimeout = 1000 * 60 * 30;
 
-        public UdpSocket(int size) 
+        public UdpSocket(int size,bool Broadcast=false) 
         {
             this.receiveChunkSize = size;
             this.receiveBuffer = new byte[size];
+
+            this.Broadcast = Broadcast;
         }
 
 
@@ -61,15 +64,21 @@ namespace Bouyei.NetFactory.Providers.Udp
             { }
         }
 
-        public void CreateUdpSocket(int port, string ip)
+        public void CreateUdpSocket(int port, IPAddress ip)
         {
-            ipEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
+            if(Broadcast) ipEndPoint = new IPEndPoint(IPAddress.Broadcast, port);
+            else ipEndPoint = new IPEndPoint(ip, port);
+
             socket = new Socket(ipEndPoint.AddressFamily, SocketType.Dgram, ProtocolType.Udp)
             {
                 ReceiveTimeout = receiveTimeout,
                 SendTimeout = sendTimeout
             };
-            socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
+            if (Broadcast)
+            {
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Broadcast, true);
+            }else
+                socket.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.PacketInformation, true);
         }
     }
 }

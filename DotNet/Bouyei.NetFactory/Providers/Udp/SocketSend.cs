@@ -72,11 +72,11 @@ namespace Bouyei.NetFactory.Udp
             }
         }
 
-        public SocketSend(Socket listenSocket, int maxCountClient, int blockSize = 4096)
+        public SocketSend(Socket socket, int maxCountClient, int blockSize = 4096)
           : base(blockSize)
         {
             this.maxCount = maxCountClient;
-            socket = listenSocket;
+            base.socket = socket;
 
             sendTokenManager = new SocketTokenManager<SocketAsyncEventArgs>(maxCountClient);
             sendBufferManager = new SocketBufferManager(maxCountClient, blockSize);
@@ -85,7 +85,7 @@ namespace Bouyei.NetFactory.Udp
             {
                 SocketAsyncEventArgs socketArgs = new SocketAsyncEventArgs
                 {
-                    UserToken = socket
+                    UserToken = base.socket
                 };
                 socketArgs.Completed += ClientSocket_Completed;
                 sendBufferManager.SetBuffer(socketArgs);
@@ -101,7 +101,7 @@ namespace Bouyei.NetFactory.Udp
         /// <param name="size"></param>
         /// <param name="waiting"></param>
         /// <param name="remoteEP"></param>
-        public bool Send(SegmentOffset dataSegment, IPEndPoint remoteEP,bool waiting)
+        public bool Send(SegmentOffset dataSegment, IPEndPoint remoteEP, bool waiting)
         {
             try
             {
@@ -117,8 +117,7 @@ namespace Bouyei.NetFactory.Udp
 
                     if (tArgs == null)
                         throw new Exception("发送缓冲池已用完,等待回收超时...");
- 
-                    tArgs.UserToken = socket;
+
                     tArgs.RemoteEndPoint = remoteEP;
 
                     if (!sendBufferManager.WriteBuffer(tArgs, seg.Array, seg.Offset, seg.Count))
@@ -128,17 +127,14 @@ namespace Bouyei.NetFactory.Udp
                         throw new Exception(string.Format("发送缓冲区溢出...buffer block max size:{0}", sendBufferManager.BlockSize));
                     }
 
-                    if (tArgs.RemoteEndPoint != null)
+                    isWillEvent &= socket.SendToAsync(tArgs);
+                    if (!isWillEvent)
                     {
-                        isWillEvent &= socket.SendToAsync(tArgs);
-                        if (!isWillEvent)
-                        {
-                            ProcessSent(tArgs);
-                        }
+                        ProcessSent(tArgs);
                     }
                     Thread.Sleep(5);
                 }
-               return isWillEvent;
+                return isWillEvent;
             }
             catch (Exception ex)
             {

@@ -64,7 +64,7 @@ namespace Bouyei.NetFactory
                 }
                 else if (NetProviderType.Udp == NetProviderType)
                 {
-                    udpClientProvider.ReceiveCallbackHandler = _receiveHanlder;
+                    udpClientProvider.ReceivedCallbackHandler = _receiveHanlder;
                 }
                 else if (NetProviderType.WebSocket == NetProviderType)
                 {
@@ -122,11 +122,11 @@ namespace Bouyei.NetFactory
                 _receiveOffsetHandler = value;
                 if (NetProviderType.Tcp == NetProviderType)
                 {
-                    tcpClientProvider.ReceiveOffsetCallback = _receiveOffsetHandler;
+                    tcpClientProvider.ReceivedOffsetCallback = _receiveOffsetHandler;
                 }
                 else if (NetProviderType.Udp == NetProviderType)
                 {
-                    udpClientProvider.ReceiveOffsetHandler = _receiveOffsetHandler;
+                    udpClientProvider.ReceivedOffsetHandler = _receiveOffsetHandler;
                 }
                 else if (NetProviderType.WebSocket == NetProviderType)
                 {

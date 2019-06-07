@@ -10,10 +10,11 @@ namespace Bouyei.NetFactoryCore.Udp
     public class UdpServerProvider :UdpSocket, IDisposable
     {
         #region variable
-        private SocketReceive socketReceive = null;
+        private SocketReceive socketRecieve = null;
         private SocketSend socketSend = null;
         private bool _isDisposed = false;
         private Encoding encoding = Encoding.UTF8;
+
         private int bufferSizeByConnection = 4096;
         private int maxNumberOfConnections = 8;
 
@@ -21,12 +22,12 @@ namespace Bouyei.NetFactoryCore.Udp
 
         #region property
 
-        public OnReceivedSegmentHandler ReceiveOffsetHanlder { get; set; }
+        public OnReceivedSegmentHandler ReceivedOffsetHanlder { get; set; }
 
         /// <summary>
         /// 接收事件响应回调
         /// </summary>
-        public OnReceivedHandler ReceiveCallbackHandler { get; set; }
+        public OnReceivedHandler ReceivedCallbackHandler { get; set; }
 
         /// <summary>
         /// 发送事件响应回调
@@ -53,7 +54,7 @@ namespace Bouyei.NetFactoryCore.Udp
 
             if (isDisposing)
             {
-                socketReceive.Dispose();
+                socketRecieve.Dispose();
                 socketSend.Dispose();
                 _isDisposed = true;
             }
@@ -62,29 +63,34 @@ namespace Bouyei.NetFactoryCore.Udp
         /// <summary>
         /// 构造方法
         /// </summary>
-        public UdpServerProvider(int maxNumberOfConnections, int bufferSizeByConnection)
-            : base(bufferSizeByConnection)
+        public UdpServerProvider(int maxNumberOfConnections, int bufferSizeByConnection, bool Broadcast = false)
+            : base(bufferSizeByConnection, Broadcast)
         {
-            this.maxNumberOfConnections = maxNumberOfConnections;
             this.bufferSizeByConnection = bufferSizeByConnection;
+            this.maxNumberOfConnections = maxNumberOfConnections;
         }
 
+        #endregion
+
+        #region public method
         /// <summary>
         /// 启动服务
         /// </summary>
         /// <param name="port">接收数据端口</param>
+        /// <param name="recBufferSize">接收缓冲区</param>
+        /// <param name="maxConnectionCount">最大客户端连接数</param>
         public void Start(int port)
-        { 
-            socketReceive = new SocketReceive(port, maxNumberOfConnections, bufferSizeByConnection);
-            socketReceive.OnReceived += receiveSocket_OnReceived;
-            socketReceive.StartReceive();
+        {
+            socketRecieve = new SocketReceive(port, bufferSizeByConnection,
+                Broadcast);
 
-            socketSend = new SocketSend(socketReceive.socket,maxNumberOfConnections, bufferSizeByConnection);
+            socketRecieve.OnReceived += receiveSocket_OnReceived;
+            socketRecieve.StartReceive();
+
+            socketSend = new SocketSend(socketRecieve.socket, maxNumberOfConnections, bufferSizeByConnection);
             socketSend.SentEventHandler += sendSocket_SentEventHandler;
         }
-        #endregion
 
-        #region public method
         /// <summary>
         /// 停止服务
         /// </summary>
@@ -94,20 +100,20 @@ namespace Bouyei.NetFactoryCore.Udp
             {
                 socketSend.Dispose();
             }
-            if (socketReceive != null)
+            if (socketRecieve != null)
             {
-                socketReceive.StopReceive();
+                socketRecieve.StopReceive();
             }
         }
- 
-        public bool Send(SegmentOffset dataSegment,IPEndPoint remoteEP ,bool waiting = true)
+
+        public bool Send(SegmentOffset dataSegment, IPEndPoint remoteEP, bool waiting = true)
         {
             return socketSend.Send(dataSegment, remoteEP, waiting);
         }
- 
+
         public int SendSync(IPEndPoint remoteEP, SegmentOffset dataSegment)
         {
-            return socketSend.SendSync(dataSegment , remoteEP);
+            return socketSend.SendSync(dataSegment, remoteEP);
         }
         #endregion
 
@@ -130,15 +136,13 @@ namespace Bouyei.NetFactoryCore.Udp
                 TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint
             };
 
-            if (ReceiveOffsetHanlder != null)
-                ReceiveOffsetHanlder(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
+            if (ReceivedOffsetHanlder != null)
+                ReceivedOffsetHanlder(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
 
-            if (ReceiveCallbackHandler != null)
+            if (ReceivedCallbackHandler != null
+                && e.BytesTransferred > 0)
             {
-                if (e.BytesTransferred > 0)
-                {
-                    ReceiveCallbackHandler(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
-                }
+                ReceivedCallbackHandler(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
             }
         }
 

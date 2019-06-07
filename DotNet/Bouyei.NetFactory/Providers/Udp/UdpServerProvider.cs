@@ -22,12 +22,12 @@ namespace Bouyei.NetFactory.Udp
 
         #region property
 
-        public OnReceivedSegmentHandler ReceiveOffsetHanlder { get; set; }
+        public OnReceivedSegmentHandler ReceivedOffsetHanlder { get; set; }
 
         /// <summary>
         /// 接收事件响应回调
         /// </summary>
-        public OnReceivedHandler ReceiveCallbackHandler { get; set; }
+        public OnReceivedHandler ReceivedCallbackHandler { get; set; }
 
         /// <summary>
         /// 发送事件响应回调
@@ -63,8 +63,8 @@ namespace Bouyei.NetFactory.Udp
         /// <summary>
         /// 构造方法
         /// </summary>
-        public UdpServerProvider( int maxNumberOfConnections,int bufferSizeByConnection)
-            :base(bufferSizeByConnection)
+        public UdpServerProvider( int maxNumberOfConnections,int bufferSizeByConnection,bool Broadcast=false)
+            :base(bufferSizeByConnection,Broadcast)
         {
             this.bufferSizeByConnection = bufferSizeByConnection;
             this.maxNumberOfConnections = maxNumberOfConnections;
@@ -81,7 +81,9 @@ namespace Bouyei.NetFactory.Udp
         /// <param name="maxConnectionCount">最大客户端连接数</param>
         public void Start(int port)
         {
-            socketRecieve = new SocketReceive(port, maxNumberOfConnections, bufferSizeByConnection);
+            socketRecieve = new SocketReceive(port,  bufferSizeByConnection,
+                Broadcast);
+
             socketRecieve.OnReceived += receiveSocket_OnReceived;
             socketRecieve.StartReceive();
 
@@ -134,15 +136,13 @@ namespace Bouyei.NetFactory.Udp
                 TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint
             };
 
-            if (ReceiveOffsetHanlder != null)
-                ReceiveOffsetHanlder(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
+            if (ReceivedOffsetHanlder != null)
+                ReceivedOffsetHanlder(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
 
-            if (ReceiveCallbackHandler != null)
+            if (ReceivedCallbackHandler != null
+                && e.BytesTransferred > 0)
             {
-                if (e.BytesTransferred > 0)
-                {
-                    ReceiveCallbackHandler(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
-                }
+                ReceivedCallbackHandler(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
             }
         }
 

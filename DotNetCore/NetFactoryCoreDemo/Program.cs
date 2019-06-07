@@ -13,9 +13,9 @@ namespace NetFactoryCoreDemo
     {
         static void Main(string[] args)
         {
-           WebSocketDemo();
-            // TcpDemo();
-            //UdpDemo();
+           //WebSocketDemo();
+             //TcpDemo();
+            UdpDemo();
             //ConnectionPoolTest();
         }
 
@@ -74,7 +74,7 @@ namespace NetFactoryCoreDemo
                 {
                     try
                     {
-                       Console.WriteLine("rec:" + Encoding.Default.GetString(session.Data.buffer,session.Data.offset,session.Data.size));
+                       Console.WriteLine("from server:" + Encoding.Default.GetString(session.Data.buffer,session.Data.offset,session.Data.size));
                     }
                     catch (Exception ex)
                     {
@@ -260,7 +260,7 @@ namespace NetFactoryCoreDemo
                 });
                 bool isConn = clientProvider.ConnectTo(port, "127.0.0.1");
 
-                int c = 100000;
+                int c = 10;
 
                 while (c > 0)
                 {
@@ -270,6 +270,8 @@ namespace NetFactoryCoreDemo
                     //    break;
 
                     clientProvider.Send(new SegmentOffset(Encoding.UTF8.GetBytes((--c).ToString())));
+
+                   // Thread.Sleep(500);
 
                 }
             }

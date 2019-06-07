@@ -19,11 +19,11 @@ namespace Bouyei.NetFactoryDemo
             //ConnectDemo();
             //ConnectionPoolTest();
             //ProtocolsDemo();
-            //UdpDemo(); 
+            UdpDemo(); 
             //TcpDemo();
             //ConnectionPoolManagerDemo();
             //PacketSocketDemo();
-            WebSocketDemo();
+            //WebSocketDemo();
         }
 
         private static void TcpDemo()
@@ -41,7 +41,7 @@ namespace Bouyei.NetFactoryDemo
                     serverSocket.Send(new SegmentToken(session.sToken,Encoding.Default.GetBytes("welcome"+DateTime.Now)));
 
                     Console.WriteLine("from client" + Encoding.Default.GetString(session.Data.buffer,
-                        session.Data.offset, session.Data.size) +"\n");
+                        session.Data.offset, session.Data.size) +Environment.NewLine);
 
                     //string info = Encoding.UTF8.GetString(buff, offset, count);
                    // Console.WriteLine(count);
@@ -98,7 +98,7 @@ namespace Bouyei.NetFactoryDemo
                     try
                     {
                         Console.WriteLine("from server" + Encoding.Default.GetString(session.Data.buffer,
-                            session.Data.offset, session.Data.size) + "\n");
+                            session.Data.offset, session.Data.size) + Environment.NewLine);
                     }
                     catch (Exception ex)
                     {
@@ -113,7 +113,7 @@ namespace Bouyei.NetFactoryDemo
                 bool rt = clientSocket.ConnectTo(port, "127.0.0.1");/* 10.152.0.71*/
                 if (rt)
                 {
-                    for (int i = 0; i < 10000; i++)
+                    for (int i = 0; i < 100000; i++)
                     {
                         if (i % 1000 == 0)
                         {
@@ -155,6 +155,7 @@ namespace Bouyei.NetFactoryDemo
             serverProvider.ReceivedOffsetHandler = new OnReceivedSegmentHandler((SegmentToken session) =>
             {
                 ++svc_c;
+
                 Console.WriteLine("from client:" + Encoding.UTF8.GetString(session.Data.buffer, session.Data.offset, session.Data.size));
                 serverProvider.Send(new SegmentToken(session.sToken, Encoding.UTF8.GetBytes("i'm server" + DateTime.Now)));
             });
@@ -165,11 +166,12 @@ namespace Bouyei.NetFactoryDemo
                 {
                     Console.WriteLine("from server :"+ Encoding.UTF8.GetString(session.Data.buffer, session.Data.offset,
                         session.Data.size));
+
                     ++cli_c;
                 });
                 bool isConn = clientProvider.ConnectTo(port, "127.0.0.1");
 
-                int c = 100000;
+                int c = 10;
 
                 while (c>0)
                 {

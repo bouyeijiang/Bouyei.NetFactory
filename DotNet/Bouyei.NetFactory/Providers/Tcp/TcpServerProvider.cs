@@ -42,7 +42,7 @@ namespace Bouyei.NetFactory.Tcp
         /// <summary>
         ///接收数据缓冲区，返回缓冲区的实际偏移和数量
         /// </summary>
-        public OnReceivedSegmentHandler ReceiveOffsetCallback { get; set; }
+        public OnReceivedSegmentHandler ReceivedOffsetCallback { get; set; }
 
         /// <summary>
         /// 发送回调处理
@@ -393,9 +393,9 @@ namespace Bouyei.NetFactory.Tcp
 
             SocketToken sToken = e.UserToken as SocketToken;
 
-            if (ReceiveOffsetCallback != null)
+            if (ReceivedOffsetCallback != null)
             {
-                ReceiveOffsetCallback(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
+                ReceivedOffsetCallback(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
             }
 
             //处理接收到的数据
@@ -473,14 +473,6 @@ namespace Bouyei.NetFactory.Tcp
             SocketToken s = e.UserToken as SocketToken;
             if (s != null) s.Close();// if (e.UserToken is SocketToken s) --新语法
             e.Dispose();
-        }
-
-        private void CloseSocket(Socket s)
-        {
-            using (LockWait lwait = new LockWait(ref lParam))
-            {
-                SafeClose(s);
-            }
         }
 
         private SocketAsyncEventArgs GetSocketAsyncFromSendPool(bool waiting, Socket socket)

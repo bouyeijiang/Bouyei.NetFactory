@@ -37,7 +37,7 @@ namespace Bouyei.NetFactory.Tcp
         /// <summary>
         /// 接受数据回调，返回缓冲区和偏移量
         /// </summary>
-        public OnReceivedSegmentHandler ReceiveOffsetCallback { get; set; }
+        public OnReceivedSegmentHandler ReceivedOffsetCallback { get; set; }
 
         /// <summary>
         /// 断开连接回调处理
@@ -462,16 +462,19 @@ namespace Bouyei.NetFactory.Tcp
             SocketToken sToken = e.UserToken as SocketToken;
             sToken.TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint;
 
-            if (ReceiveOffsetCallback != null)
-                ReceiveOffsetCallback(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
+            if (ReceivedOffsetCallback != null)
+                ReceivedOffsetCallback(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
 
             if (RecievedCallback != null)
             {
                 RecievedCallback(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
             }
-            if (!e.AcceptSocket.ReceiveAsync(e))
+            if (socket.Connected)
             {
-                ProcessReceiveCallback(e);
+                if (!e.AcceptSocket.ReceiveAsync(e))
+                {
+                    ProcessReceiveCallback(e);
+                }
             }
         }
 

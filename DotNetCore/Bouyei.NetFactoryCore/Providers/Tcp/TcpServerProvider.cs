@@ -41,7 +41,7 @@ namespace Bouyei.NetFactoryCore.Tcp
         /// <summary>
         ///接收数据缓冲区，返回缓冲区的实际偏移和数量
         /// </summary>
-        public OnReceivedSegmentHandler ReceiveOffsetCallback { get; set; }
+        public OnReceivedSegmentHandler ReceivedOffsetCallback { get; set; }
 
         /// <summary>
         /// 发送回调处理
@@ -130,7 +130,7 @@ namespace Bouyei.NetFactoryCore.Tcp
 
                 using (LockWait lwait = new LockWait(ref lParam))
                 {
-                    CreateTcpSocket(port,ip);
+                    CreateTcpSocket(port,IPAddress.Parse(ip));
  
                     socket.Bind(ipEndPoint);
 
@@ -192,9 +192,7 @@ namespace Bouyei.NetFactoryCore.Tcp
         public bool Send(SegmentToken segToken, bool waiting = true)
         {
             try
-            {
-                if (!segToken.sToken.TokenSocket.Connected) return false;
-               
+            {               
                 bool isWillEvent = true;
 
                 ArraySegment<byte>[] segItems = sendBufferManager.BufferToSegments(
@@ -393,9 +391,9 @@ namespace Bouyei.NetFactoryCore.Tcp
 
             SocketToken sToken = e.UserToken as SocketToken;
 
-            if (ReceiveOffsetCallback != null)
+            if (ReceivedOffsetCallback != null)
             {
-                ReceiveOffsetCallback(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
+                ReceivedOffsetCallback(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
             }
             //处理接收到的数据
             if (ReceivedCallback != null)
@@ -475,13 +473,13 @@ namespace Bouyei.NetFactoryCore.Tcp
             e.Dispose();
         }
 
-        private void CloseSocket(Socket s)
-        {
-            using (LockWait lwait = new LockWait(ref lParam))
-            {
-                SafeClose(s);
-            }
-        }
+        //private void CloseSocket(Socket s)
+        //{
+        //    using (LockWait lwait = new LockWait(ref lParam))
+        //    {
+        //        SafeClose(s);
+        //    }
+        //}
 
         private SocketAsyncEventArgs GetSocketAsyncFromSendPool(bool waiting, Socket socket)
         {

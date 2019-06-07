@@ -29,9 +29,9 @@ namespace Bouyei.NetFactory.WebSocket
             ConnectionPool = new  List<ConnectionInfo>(maxConnections);
 
             serverProvider = new TcpServerProvider(maxConnections, bufferSize);
-            serverProvider.AcceptedCallback = new OnAcceptedHandler(AcceptedHandler);
+            //serverProvider.AcceptedCallback = new OnAcceptedHandler(AcceptedHandler);
             serverProvider.DisconnectedCallback = new OnDisconnectedHandler(DisconnectedHandler);
-            serverProvider.ReceiveOffsetCallback = new OnReceivedSegmentHandler(ReceivedHandler);
+            serverProvider.ReceivedOffsetCallback = new OnReceivedSegmentHandler(ReceivedHandler);
             serverProvider.SentCallback = new OnSentHandler(SentHandler);
 
             threadingTimer = new Timer(new TimerCallback(TimingEvent), null, -1, -1);
@@ -99,16 +99,29 @@ namespace Bouyei.NetFactory.WebSocket
             return serverProvider.Send(session,waiting);
         }
 
-        private void AcceptedHandler(SocketToken sToken)
-        {
+        //private void AcceptedHandler(SocketToken sToken)
+        //{
 
-        }
+        //}
 
         private void DisconnectedHandler(SocketToken sToken)
         {
-            ConnectionPool.Remove(new ConnectionInfo() { sToken = sToken });
+           // ConnectionPool.Remove(new ConnectionInfo() { sToken = sToken });
+            Remove(sToken);
 
             if (OnDisconnected != null) OnDisconnected(sToken);
+        }
+
+        private void RefreshTimeout(SocketToken sToken)
+        {
+            foreach (var item in ConnectionPool)
+            {
+                if (item.sToken.TokenId == sToken.TokenId)
+                {
+                    item.ConnectedTime = DateTime.Now;
+                    break;
+                }
+            }
         }
 
         private void ReceivedHandler(SegmentToken session)
@@ -140,7 +153,6 @@ namespace Bouyei.NetFactory.WebSocket
                 serverProvider.Send(new SegmentToken(session.sToken, encoding.GetBytes(rsp)));
 
                 connection.accessInfo = access;
-                connection.IsHandShaked = true;
 
                 if (OnAccepted != null) OnAccepted(session.sToken);
             }
@@ -164,6 +176,8 @@ namespace Bouyei.NetFactory.WebSocket
                     if (OnReceivedBytes != null)
                         OnReceivedBytes(new SegmentToken(session.sToken, packet.Payload));
                 }
+
+                RefreshTimeout(session.sToken);
             }
         }
 
@@ -186,37 +200,16 @@ namespace Bouyei.NetFactory.WebSocket
 
         private bool Remove(ConnectionInfo info)
         {
-            lock (lockobject)
-            {
+             
                return ConnectionPool.Remove(info);
-                //foreach (var node in ConnectionPool)
-                //{
-                //    if (node.sToken.TokenId == info.sToken.TokenId)
-                //    {
-                //        ConnectionPool.Remove(node);
-                //        return true;
-                //    }
-                //}
-              //  return false;
-            }
+                
         }
 
         private bool Remove(SocketToken sToken)
         {
-            lock (lockobject)
-            {
-                return ConnectionPool.RemoveAll(x => x.sToken.TokenId == sToken.TokenId) > 0;
 
-                //foreach (var node in ConnectionPool)
-                //{
-                //    if (node.sToken.TokenId == sToken.TokenId)
-                //    {
-                //        ConnectionPool.Remove(node);
-                //        return true;
-                //    }
-                //}
-                //return false;
-            }
+            return ConnectionPool.RemoveAll(x => x.sToken.TokenId == sToken.TokenId) > 0;
+
         }
 
         internal class ConnectionInfo : IComparable<SocketToken>

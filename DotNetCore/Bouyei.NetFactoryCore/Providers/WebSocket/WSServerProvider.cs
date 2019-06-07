@@ -7,9 +7,9 @@ namespace Bouyei.NetFactoryCore.WebSocket
 {
     using Protocols.WebSocketProto;
     using Bouyei.NetFactoryCore.Tcp;
- 
 
-    public class WSServerProvider:IDisposable
+
+    public class WSServerProvider : IDisposable
     {
         private Encoding encoding = Encoding.UTF8;
         TcpServerProvider serverProvider = null;
@@ -24,14 +24,14 @@ namespace Bouyei.NetFactoryCore.WebSocket
         public OnDisconnectedHandler OnDisconnected { get; set; }
         public OnSentHandler OnSent { get; set; }
 
-        public WSServerProvider(int maxConnections=32,int bufferSize=4096)
+        public WSServerProvider(int maxConnections = 32, int bufferSize = 4096)
         {
             ConnectionPool = new List<ConnectionInfo>(maxConnections);
 
             serverProvider = new TcpServerProvider(maxConnections, bufferSize);
             //serverProvider.AcceptedCallback = new OnAcceptHandler(AcceptedHandler);
             serverProvider.DisconnectedCallback = new OnDisconnectedHandler(DisconnectedHandler);
-            serverProvider.ReceiveOffsetCallback = new OnReceivedSegmentHandler(ReceivedHandler);
+            serverProvider.ReceivedOffsetCallback = new OnReceivedSegmentHandler(ReceivedHandler);
             serverProvider.SentCallback = new OnSentHandler(OnSendHandler);
 
             threadingTimer = new Timer(new TimerCallback(TimingEvent), null, -1, -1);
@@ -60,12 +60,12 @@ namespace Bouyei.NetFactoryCore.WebSocket
             }
         }
 
-        public bool Start(int port,string ip="0.0.0.0")
+        public bool Start(int port, string ip = "0.0.0.0")
         {
-            bool isOk = serverProvider.Start(port,ip);
+            bool isOk = serverProvider.Start(port, ip);
             if (isOk)
             {
-                threadingTimer.Change(timeout/2, timeout);
+                threadingTimer.Change(timeout / 2, timeout);
             }
             return isOk;
         }
@@ -109,7 +109,8 @@ namespace Bouyei.NetFactoryCore.WebSocket
 
         private void DisconnectedHandler(SocketToken sToken)
         {
-            ConnectionPool.Remove(new ConnectionInfo() { sToken = sToken });
+            //ConnectionPool.Remove(new ConnectionInfo() { sToken = sToken });
+            Remove(sToken);
 
             if (OnDisconnected != null) OnDisconnected(sToken);
         }
@@ -139,7 +140,7 @@ namespace Bouyei.NetFactoryCore.WebSocket
                 var access = serverPackage.GetHandshakePackage(session.Data);
                 connection.IsHandShaked = access.IsHandShaked();
 
-                if (connection.IsHandShaked==false)
+                if (connection.IsHandShaked == false)
                 {
                     CloseAndRemove(connection);
                     return;
@@ -151,7 +152,6 @@ namespace Bouyei.NetFactoryCore.WebSocket
                 serverProvider.Send(new SegmentToken(session.sToken, encoding.GetBytes(rsp)));
 
                 connection.accessInfo = access;
-                connection.IsHandShaked = true;
 
                 if (OnAccepted != null) OnAccepted(session.sToken);
             }
@@ -175,6 +175,20 @@ namespace Bouyei.NetFactoryCore.WebSocket
                     if (OnReceivedBytes != null)
                         OnReceivedBytes(new SegmentToken(session.sToken, packet.Payload));
                 }
+
+                RefreshTimeout(session.sToken);
+            }
+        }
+
+        private void RefreshTimeout(SocketToken sToken)
+        {
+            foreach (var item in ConnectionPool)
+            {
+                if (item.sToken.TokenId == sToken.TokenId)
+                {
+                    item.ConnectedTime = DateTime.Now;
+                    break;
+                }
             }
         }
 
@@ -189,51 +203,28 @@ namespace Bouyei.NetFactoryCore.WebSocket
 
         private bool Remove(ConnectionInfo info)
         {
-            lock (lockobject)
-            {
-                return ConnectionPool.Remove(info);
-                //foreach (var node in ConnectionPool)
-                //{
-                //    if (node.sToken.TokenId == info.sToken.TokenId)
-                //    {
-                //        ConnectionPool.Remove(node);
-                //        return true;
-                //    }
-                //}
-                //return false;
-            }
+            return ConnectionPool.Remove(info);
         }
 
         private bool Remove(SocketToken sToken)
         {
-            lock (lockobject)
-            {
-                return ConnectionPool.RemoveAll(x => x.sToken.TokenId == sToken.TokenId) > 0;
-                //foreach (var node in ConnectionPool)
-                //{
-                //    if (node.sToken.TokenId == sToken.TokenId)
-                //    {
-                //        ConnectionPool.Remove(node);
-                //        return true;
-                //    }
-                //}
-                //return false;
-            }
+
+            return ConnectionPool.RemoveAll(x => x.sToken.TokenId == sToken.TokenId) > 0;
         }
- 
+    }
 
-        internal class ConnectionInfo : IComparable<SocketToken>
+
+    internal class ConnectionInfo : IComparable<SocketToken>
+    {
+        public SocketToken sToken { get; set; }
+
+        public bool IsHandShaked { get; set; }
+
+        public AccessInfo accessInfo { get; set; }
+        public DateTime ConnectedTime { get; set; } = DateTime.MinValue;
+        public int CompareTo(SocketToken info)
         {
-            public SocketToken sToken { get; set; }
-
-            public bool IsHandShaked { get; set; }
-
-            public AccessInfo accessInfo { get; set; }
-            public DateTime ConnectedTime { get; set; } = DateTime.MinValue;
-            public int CompareTo(SocketToken info)
-            {
-                return sToken.TokenId - info.TokenId;
-            }
+            return sToken.TokenId - info.TokenId;
         }
     }
 }

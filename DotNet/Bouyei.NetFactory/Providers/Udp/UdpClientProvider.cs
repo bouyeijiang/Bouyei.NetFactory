@@ -30,7 +30,7 @@ namespace Bouyei.NetFactory.Udp
         /// <summary>
         /// 接收回调处理
         /// </summary>
-        public OnReceivedHandler ReceiveCallbackHandler { get; set; }
+        public OnReceivedHandler ReceivedCallbackHandler { get; set; }
 
         /// <summary>
         /// 发送回调处理
@@ -39,7 +39,7 @@ namespace Bouyei.NetFactory.Udp
         /// <summary>
         /// 接收缓冲区回调
         /// </summary>
-        public OnReceivedSegmentHandler ReceiveOffsetHandler { get; set; }
+        public OnReceivedSegmentHandler ReceivedOffsetHandler { get; set; }
         #endregion
 
         #region public method
@@ -79,7 +79,6 @@ namespace Bouyei.NetFactory.Udp
         {
             this.maxNumberOfConnections = maxNumberOfConnections;
             this.bufferSizeByConnection = bufferSizeByConnection;
-            Initialize();
         }
 
         public void Disconnect()
@@ -94,40 +93,13 @@ namespace Bouyei.NetFactory.Udp
         /// <param name="port"></param>
         /// <param name="ip"></param>
         /// <returns></returns>
-        public bool Connect(int port, string ip="0.0.0.0")
+        public bool Connect(int port, string ip)
         {
             Close();
 
-            CreateUdpSocket(port, ip);
+            CreateUdpSocket(port,IPAddress.Parse(ip));
 
-            //int retry = 3;
-            //again:
-            //try
-            //{
-            //    //探测是否有效连接
-            //    SocketAsyncEventArgs sArgs = new SocketAsyncEventArgs();
-            //    sArgs.Completed += IO_Completed;
-            //    sArgs.UserToken = socket;
-            //    sArgs.RemoteEndPoint =ipEndPoint;
-            //    sArgs.SetBuffer(new byte[] { 0 }, 0, 1);
-
-            //    bool rt = socket.SendToAsync(sArgs);
-            //    if (rt)
-            //    {
-            //        StartReceive();
-            //        mReset.WaitOne();
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    retry -= 1;
-            //    if (retry > 0)
-            //    {
-            //        Thread.Sleep(1000);
-            //        goto again;
-            //    }
-            //    throw ex;
-            //}
+            Initialize();
             return true;
         }
 
@@ -281,7 +253,7 @@ namespace Bouyei.NetFactory.Udp
 
             SocketToken sToken = new SocketToken()
             {
-                TokenSocket = e.UserToken as Socket,
+                TokenSocket = e.AcceptSocket as Socket,
                 TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint
             };
 
@@ -291,13 +263,13 @@ namespace Bouyei.NetFactory.Udp
                     return;
 
                 //缓冲区偏移量返回
-                if (ReceiveOffsetHandler != null)
-                    ReceiveOffsetHandler(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
+                if (ReceivedOffsetHandler != null)
+                    ReceivedOffsetHandler(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
 
                 //截取后返回
-                if (ReceiveCallbackHandler != null)
+                if (ReceivedCallbackHandler != null)
                 {
-                    ReceiveCallbackHandler(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
+                    ReceivedCallbackHandler(sToken, encoding.GetString(e.Buffer, e.Offset, e.BytesTransferred));
                 }
             }
             catch (Exception ex)
@@ -309,7 +281,7 @@ namespace Bouyei.NetFactory.Udp
                 if (e.SocketError == SocketError.Success)
                 {
                     //继续下一个接收
-                    if (!sToken.TokenSocket.ReceiveFromAsync(e))
+                    if (!socket.ReceiveFromAsync(e))
                     {
                         ProcessReceive(e);
                     }
@@ -322,7 +294,8 @@ namespace Bouyei.NetFactory.Udp
             try
             {
                 bool isSuccess = e.SocketError == SocketError.Success;
-                if(isConnected==false && isSuccess)
+
+                if (isConnected == false && isSuccess)
                 {
 
                     StartReceive();

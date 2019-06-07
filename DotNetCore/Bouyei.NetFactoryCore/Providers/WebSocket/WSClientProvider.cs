@@ -29,7 +29,7 @@ namespace Bouyei.NetFactoryCore.WebSocket
         {
             clientProvider = new TcpClientProvider(bufferSize, blocks);
             clientProvider.DisconnectedCallback = new OnDisconnectedHandler(DisconnectedHandler);
-            clientProvider.ReceiveOffsetCallback = new OnReceivedSegmentHandler(OnReceivedEventHandler);
+            clientProvider.ReceivedOffsetCallback = new OnReceivedSegmentHandler(OnReceivedEventHandler);
             clientProvider.SentCallback = new OnSentHandler(SentHandler);
         }
 
@@ -159,11 +159,5 @@ namespace Bouyei.NetFactoryCore.WebSocket
                 }
             }
         }
-    }
-
-    internal enum MsgType
-    {
-        Access = 0,
-        Connection = 1
     }
 }

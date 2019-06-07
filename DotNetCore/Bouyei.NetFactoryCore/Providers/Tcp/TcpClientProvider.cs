@@ -37,7 +37,7 @@ namespace Bouyei.NetFactoryCore.Tcp
         /// <summary>
         /// 接受数据回调，返回缓冲区和偏移量
         /// </summary>
-        public OnReceivedSegmentHandler ReceiveOffsetCallback { get; set; }
+        public OnReceivedSegmentHandler ReceivedOffsetCallback { get; set; }
 
         /// <summary>
         /// 断开连接回调处理
@@ -186,7 +186,7 @@ namespace Bouyei.NetFactoryCore.Tcp
             ChannelProviderState = ChannelProviderType.Sync;
             int retry = 3;
 
-            CreateTcpSocket(port,ip);
+            CreateTcpSocket(port, IPAddress.Parse(ip));
 
             //using (LockWait lwait = new LockWait(ref lParam))
             //{
@@ -343,7 +343,7 @@ namespace Bouyei.NetFactoryCore.Tcp
 
         private void  CreatedConnectToBindArgs(int port,string ip)
         {
-            CreateTcpSocket(port,ip);
+            CreateTcpSocket(port,IPAddress.Parse(ip));
 
             //连接事件绑定
             var sArgs = new SocketAsyncEventArgs
@@ -459,16 +459,20 @@ namespace Bouyei.NetFactoryCore.Tcp
             SocketToken sToken = e.UserToken as SocketToken;
             sToken.TokenIpEndPoint = (IPEndPoint)e.RemoteEndPoint;
 
-            if (ReceiveOffsetCallback != null)
-                ReceiveOffsetCallback(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
+            if (ReceivedOffsetCallback != null)
+                ReceivedOffsetCallback(new SegmentToken(sToken, e.Buffer, e.Offset, e.BytesTransferred));
 
             if (RecievedCallback != null)
             {
                 RecievedCallback(sToken,encoding.GetString( e.Buffer,e.Offset,e.BytesTransferred));
             }
-            if (!e.AcceptSocket.ReceiveAsync(e))
+
+            if (socket.Connected)
             {
-                ProcessReceiveCallback(e);
+                if (!e.AcceptSocket.ReceiveAsync(e))
+                {
+                    ProcessReceiveCallback(e);
+                }
             }
         }
 
