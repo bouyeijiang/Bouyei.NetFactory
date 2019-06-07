@@ -3,8 +3,8 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <SignAssembly>false</SignAssembly>
-    <AssemblyOriginatorKeyFile>netfactory.pfx</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>bouyei.pfx</AssemblyOriginatorKeyFile>
     <Version>1.3.3</Version>
     <AssemblyVersion>1.3.3.3</AssemblyVersion>
     <FileVersion>1.3.3.3</FileVersion>
