@@ -46,7 +46,7 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
             return acceptInfo;
         }
 
-        public byte[] GetBytes(string content)
+        public SegmentOffset GetPackageBytes(string content)
         {
             var buf = encoding.GetBytes(content);
             Payload = new SegmentOffset()
@@ -60,18 +60,54 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
             //     2,4
             //};
 
-            Payload.buffer = encoding.GetBytes(content);
+            //Payload.buffer = encoding.GetBytes(content);
             PayloadLength = Payload.buffer.LongLength;
 
-            return EncodingToBytes();
+            return new SegmentOffset(EncodingToBytes());
         }
 
-        public byte[] GetBytes(OpCodeType code = OpCodeType.Bin)
+        public SegmentOffset GetPackageBytes(byte[] buf)
         {
-            OpCode = (byte)code;
+            Payload = new SegmentOffset(buf);
+
+            //Mask = true;
+            //MaskKey = new byte[4] {
+            //     1,3,
+            //     2,4
+            //};
+
             PayloadLength = Payload.buffer.LongLength;
 
-            return EncodingToBytes();
+            return new SegmentOffset(EncodingToBytes());
+        }
+
+        public SegmentOffset GetPackageBytes(SegmentOffset buf)
+        {
+            Payload = buf;
+
+            //Mask = true;
+            //MaskKey = new byte[4] {
+            //     1,3,
+            //     2,4
+            //};
+
+            PayloadLength = Payload.buffer.LongLength;
+
+            return new SegmentOffset(EncodingToBytes());
+        }
+
+        public SegmentOffset GetBytes(OpCodeType code = OpCodeType.Bin)
+        {
+            OpCode = (byte)code;
+            if (Payload == null)
+            {
+                Payload = new SegmentOffset();
+                Payload.buffer = new byte[] { };
+            }
+
+            PayloadLength = Payload.buffer.LongLength;
+
+            return new SegmentOffset(EncodingToBytes());
         }
     }
 

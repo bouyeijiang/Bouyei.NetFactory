@@ -13,9 +13,9 @@ namespace NetFactoryCoreDemo
     {
         static void Main(string[] args)
         {
-           //WebSocketDemo();
+           WebSocketDemo();
              //TcpDemo();
-            UdpDemo();
+            //UdpDemo();
             //ConnectionPoolTest();
         }
 
@@ -122,7 +122,8 @@ namespace NetFactoryCoreDemo
 
             });
             wsService.OnReceivedBytes = new  OnReceivedSegmentHandler((SegmentToken data) => {
-                Console.WriteLine("receive bytes:"+data.Data.size);
+                Console.WriteLine("receive bytes:"+Encoding.UTF8.GetString(data.Data.buffer,
+                    data.Data.offset,data.Data.size));
             });
             bool isOk = wsService.Start(65531);
             if(isOk)

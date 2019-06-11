@@ -88,8 +88,8 @@ namespace Bouyei.NetFactoryCore.WebSocket
         {
             if (IsConnected == false) return false;
 
-            var buf = new ClientPackage().GetBytes(msg);
-            clientProvider.Send(new SegmentOffset(buf));
+           var buf = new ClientPackage().GetPackageBytes(msg);
+            clientProvider.Send(buf,waiting);
             return true;
         }
 
@@ -97,9 +97,23 @@ namespace Bouyei.NetFactoryCore.WebSocket
         {
             if (IsConnected == false) return false;
 
-            var buf = new ClientPackage().EncodingToBytes();
-            clientProvider.Send(new SegmentOffset(buf), waiting);
+            var buf = new ClientPackage().GetPackageBytes(data.buffer);
+            clientProvider.Send(buf, waiting);
             return true;
+        }
+
+        public void SendPong(SegmentOffset buf)
+        {
+            var seg = new ClientPackage() {
+                 Payload=buf
+            }.GetBytes(OpCodeType.Bong);
+            clientProvider.Send(seg, true);
+        }
+
+        public void SendPing()
+        {
+            var buf = new ClientPackage().GetBytes(OpCodeType.Bing);
+            clientProvider.Send(buf, true);
         }
 
         private void DisconnectedHandler(SocketToken sToken)
@@ -146,17 +160,26 @@ namespace Bouyei.NetFactoryCore.WebSocket
                     if (OnReceived != null)
                         OnReceived(session.sToken, encoding.GetString(packet.Payload.buffer,
                         packet.Payload.offset, packet.Payload.size));
+
+                    return;
                 }
-                else if (packet.OpCode == 0x08)
+                else if (packet.OpCode == 0x08)//close
                 {
                     IsConnected = false;
                     clientProvider.Disconnect();
                 }
-                else
+                else if (packet.OpCode == 0x09)//ping
                 {
-                    if (OnReceivedBytes != null)
-                        OnReceivedBytes(new SegmentToken(session.sToken, packet.Payload));
+                    SendPong(session.Data);
                 }
+                else if (packet.OpCode == 0x0A)//pong
+                {
+                    SendPing();
+                }
+
+                if (OnReceivedBytes != null && packet.Payload.size>0)
+                    OnReceivedBytes(new SegmentToken(session.sToken, packet.Payload));
+
             }
         }
     }

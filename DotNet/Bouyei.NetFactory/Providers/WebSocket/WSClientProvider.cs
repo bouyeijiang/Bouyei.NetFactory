@@ -85,7 +85,7 @@ namespace Bouyei.NetFactory.WebSocket
             if (IsConnected == false) return false;
 
             var buf = new ClientPackage().GetBytes(msg);
-            clientProvider.Send(new SegmentOffset(buf),waiting);
+            clientProvider.Send(buf,waiting);
             return true;
         }
 
@@ -93,9 +93,20 @@ namespace Bouyei.NetFactory.WebSocket
         {
             if (IsConnected == false) return false;
 
-            var buf = new ClientPackage().EncodingToBytes();
-            clientProvider.Send(new SegmentOffset(buf),waiting);
+            clientProvider.Send(data,waiting);
             return true;
+        }
+
+        public void SendPong(SegmentOffset buf)
+        {
+            var seg = new ClientPackage() { Payload = buf }.GetBytes(OpCodeType.Bong);
+            clientProvider.Send(seg, true);
+        }
+
+        public void SendPing()
+        {
+            var buf = new ClientPackage().GetBytes(OpCodeType.Bing);
+            clientProvider.Send(buf, true);
         }
 
         private void DisconnectedHandler(SocketToken sToken)
@@ -109,12 +120,12 @@ namespace Bouyei.NetFactory.WebSocket
             if (IsConnected == false)
             {
                 string msg = encoding.GetString(session.Data.buffer, session.Data.offset, session.Data.size);
-                acceptInfo =new ClientPackage().GetAcceptPackage(msg);
+                acceptInfo = new ClientPackage().GetAcceptPackage(msg);
 
-                if ((IsConnected=acceptInfo.IsHandShaked()))
+                if ((IsConnected = acceptInfo.IsHandShaked()))
                 {
                     resetEvent.Set();
-                    if (OnConnected != null) OnConnected(session.sToken,IsConnected);
+                    if (OnConnected != null) OnConnected(session.sToken, IsConnected);
                 }
                 else
                 {
@@ -130,17 +141,25 @@ namespace Bouyei.NetFactory.WebSocket
                     if (OnReceived != null)
                         OnReceived(session.sToken, encoding.GetString(packet.Payload.buffer,
                         packet.Payload.offset, packet.Payload.size));
+
+                    return;
                 }
-                else if (packet.OpCode == 0x08)
+                else if (packet.OpCode == 0x08)//close
                 {
                     IsConnected = false;
                     clientProvider.Disconnect();
                 }
-                else
+                else if (packet.OpCode == 0x09)//ping
                 {
-                    if (OnReceivedBytes != null)
-                        OnReceivedBytes(new SegmentToken(session.sToken, packet.Payload));
+                    SendPong(session.Data);
                 }
+                else if (packet.OpCode == 0x0A)//pong
+                {
+                    SendPing();
+                }
+
+                if (OnReceivedBytes != null && packet.Payload.size > 0)
+                    OnReceivedBytes(new SegmentToken(session.sToken, packet.Payload));
             }
         }
         private void SentHandler(SegmentToken session)

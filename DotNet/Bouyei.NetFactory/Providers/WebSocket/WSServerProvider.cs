@@ -51,11 +51,16 @@ namespace Bouyei.NetFactory.WebSocket
         {
             lock (lockobject)
             {
-               var items= ConnectionPool.FindAll(x => DateTime.Now.Subtract(x.ConnectedTime).TotalMilliseconds >= timeout);
+                var items = ConnectionPool.FindAll(x => DateTime.Now.Subtract(x.ConnectedTime).TotalMilliseconds >= (timeout >> 1));
 
-                foreach(var node in items)
+                foreach (var node in items)
                 {
-                    CloseAndRemove(node);
+                    if (DateTime.Now.Subtract(node.ConnectedTime).TotalMilliseconds >= timeout)
+                    {
+                        CloseAndRemove(node);
+                        continue;
+                    }
+                    SendPing(node.sToken);
                 }
             }
         }
@@ -65,7 +70,7 @@ namespace Bouyei.NetFactory.WebSocket
             bool isOk = serverProvider.Start(port,ip);
             if (isOk)
             {
-                threadingTimer.Change(timeout/2, timeout);
+                threadingTimer.Change(timeout>>1, timeout);
             }
             return isOk;
         }
@@ -89,7 +94,7 @@ namespace Bouyei.NetFactory.WebSocket
 
         public bool Send(SocketToken sToken, string content,bool waiting=true)
         {
-            byte[] buffer = new ServerPackage().GetBytes(content);
+           var buffer = new ServerPackage().GetBytes(content);
 
             return serverProvider.Send(new SegmentToken(sToken, buffer),waiting);
         }
@@ -97,6 +102,20 @@ namespace Bouyei.NetFactory.WebSocket
         public bool Send(SegmentToken session,bool waiting=true)
         {
             return serverProvider.Send(session,waiting);
+        }
+
+        private void SendPing(SocketToken sToken)
+        {
+           serverProvider.Send(new SegmentToken(sToken, new byte[] { 0x89, 0x00 }));
+        }
+
+        private void SendPong(SegmentToken session)
+        {
+            var buffer = new ServerPackage() {
+                 Payload=session.Data
+            }.GetBytes(OpCodeType.Bong);
+
+            serverProvider.Send(new SegmentToken(session.sToken, buffer));
         }
 
         //private void AcceptedHandler(SocketToken sToken)
@@ -141,7 +160,7 @@ namespace Bouyei.NetFactory.WebSocket
                 var access = serverPackage.GetHandshakePackage(session.Data);
                 connection.IsHandShaked = access.IsHandShaked();
 
-                if (connection.IsHandShaked==false)
+                if (connection.IsHandShaked == false)
                 {
                     CloseAndRemove(connection);
                     return;
@@ -158,26 +177,34 @@ namespace Bouyei.NetFactory.WebSocket
             }
             else
             {
+                RefreshTimeout(session.sToken);
+
                 ClientPackage packet = new ClientPackage();
                 packet.DecodingFromBytes(session.Data, true);
-                if (packet.OpCode == 0x01)
+                if (packet.OpCode == 0x01)//text
                 {
                     if (OnReceived != null)
                         OnReceived(session.sToken, encoding.GetString(packet.Payload.buffer,
                         packet.Payload.offset, packet.Payload.size));
+
+                    return;
                 }
-                else if (packet.OpCode == 0x08)
+                else if (packet.OpCode == 0x08)//close
                 {
                     CloseAndRemove(connection);
                     return;
                 }
-                else
+                else if (packet.OpCode == 0x09)//ping
                 {
-                    if (OnReceivedBytes != null)
-                        OnReceivedBytes(new SegmentToken(session.sToken, packet.Payload));
+                    SendPong(session);
+                }
+                else if (packet.OpCode == 0x0A)//pong
+                {
+                  //  SendPing(session.sToken);
                 }
 
-                RefreshTimeout(session.sToken);
+                if (OnReceivedBytes != null && packet.Payload.size>0)
+                    OnReceivedBytes(new SegmentToken(session.sToken, packet.Payload));
             }
         }
 

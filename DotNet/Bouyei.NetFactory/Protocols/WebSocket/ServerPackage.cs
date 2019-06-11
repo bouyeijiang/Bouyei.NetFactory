@@ -30,7 +30,7 @@ namespace Bouyei.NetFactory.Protocols.WebSocketProto
             return accept.ToString();
         }
 
-        public byte[] GetBytes(string content)
+        public SegmentOffset GetBytes(string content)
         {
             var buf = encoding.GetBytes(content);
             Payload = new SegmentOffset()
@@ -44,18 +44,25 @@ namespace Bouyei.NetFactory.Protocols.WebSocketProto
             //     2,4
             //};
 
-            Payload.buffer = encoding.GetBytes(content);
+            //Payload.buffer = encoding.GetBytes(content);
             PayloadLength = Payload.buffer.LongLength;
 
-            return EncodingToBytes();
+            return new SegmentOffset(EncodingToBytes());
         }
 
-        public byte[] GetBytes(OpCodeType code=OpCodeType.Bin)
+        public SegmentOffset GetBytes(OpCodeType code=OpCodeType.Bin)
         {
             OpCode = (byte)code;
+
+            if (Payload == null)
+            {
+                Payload = new SegmentOffset();
+                Payload.buffer = new byte[] { };
+            }
+             
             PayloadLength = Payload.buffer.LongLength;
 
-            return EncodingToBytes();
+            return new SegmentOffset(EncodingToBytes());
         }
 
         public AccessInfo GetHandshakePackage(SegmentOffset segOffset)
