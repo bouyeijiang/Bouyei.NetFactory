@@ -88,7 +88,7 @@ namespace Bouyei.NetFactoryCore.WebSocket
         {
             if (IsConnected == false) return false;
 
-           var buf = new ClientPackage().GetPackageBytes(msg);
+           var buf = new WebsocketFrame().ToSegmentFrame(msg);
             clientProvider.Send(buf,waiting);
             return true;
         }
@@ -97,22 +97,20 @@ namespace Bouyei.NetFactoryCore.WebSocket
         {
             if (IsConnected == false) return false;
 
-            var buf = new ClientPackage().GetPackageBytes(data.buffer);
+            var buf = new WebsocketFrame().ToSegmentFrame(data.buffer);
             clientProvider.Send(buf, waiting);
             return true;
         }
 
         public void SendPong(SegmentOffset buf)
         {
-            var seg = new ClientPackage() {
-                 Payload=buf
-            }.GetBytes(OpCodeType.Bong);
+            var seg = new WebsocketFrame().ToSegmentFrame(buf,OpCodeType.Bong);
             clientProvider.Send(seg, true);
         }
 
         public void SendPing()
         {
-            var buf = new ClientPackage().GetBytes(OpCodeType.Bing);
+            var buf = new WebsocketFrame().ToSegmentFrame(new byte[] { },OpCodeType.Bing);
             clientProvider.Send(buf, true);
         }
 
@@ -139,7 +137,7 @@ namespace Bouyei.NetFactoryCore.WebSocket
             if (IsConnected == false)
             {
                 string msg = encoding.GetString(session.Data.buffer, session.Data.offset, session.Data.size);
-                acceptInfo = new ClientPackage().GetAcceptPackage(msg);
+                acceptInfo = new WebsocketFrame().ParseAcceptedFrame(msg);
 
                 if ((IsConnected = acceptInfo.IsHandShaked()))
                 {
@@ -153,7 +151,7 @@ namespace Bouyei.NetFactoryCore.WebSocket
             }
             else
             {
-                ClientPackage packet = new ClientPackage();
+                WebsocketFrame packet = new WebsocketFrame();
                 packet.DecodingFromBytes(session.Data, true);
                 if (packet.OpCode == 0x01)
                 {

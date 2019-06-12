@@ -53,11 +53,10 @@
     <Compile Include="Common\Structures.cs" />
     <Compile Include="Protocols\WebSocket\AcceptInfo.cs" />
     <Compile Include="Protocols\WebSocket\AccessInfo.cs" />
-    <Compile Include="Protocols\WebSocket\ClientPackage.cs" />
-    <Compile Include="Protocols\WebSocket\DataFrameInfo.cs" />
+    <Compile Include="Protocols\WebSocket\DataFrame.cs" />
     <Compile Include="Providers\WebSocket\SslHelper.cs" />
     <Compile Include="Protocols\WebSocket\UrlInfo.cs" />
-    <Compile Include="Protocols\WebSocket\ServerPackage.cs" />
+    <Compile Include="Protocols\WebSocket\WebsocketFrame.cs" />
     <Compile Include="Providers\Interface\INetClientProvider.cs" />
     <Compile Include="Providers\Interface\INetProtocolProvider.cs" />
     <Compile Include="Providers\Interface\INetServerProvider.cs" />

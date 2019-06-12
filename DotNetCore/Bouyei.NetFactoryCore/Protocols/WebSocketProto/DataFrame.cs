@@ -1,11 +1,11 @@
-﻿using Bouyei.NetFactory.Base;
+﻿using Bouyei.NetFactoryCore.Base;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Bouyei.NetFactory.Protocols.WebSocketProto
+namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
 {
-    public class DataFrameInfo
+    public class DataFrame
     {
         /// <summary>
         /// 如果为true则该消息为消息尾部,如果false为零则还有后续数据包;
@@ -88,17 +88,17 @@ namespace Bouyei.NetFactory.Protocols.WebSocketProto
             }
             else
             {
-                var payLengthBytes = ((ulong)PayloadLength).ToBytes();
+                var lenghts = ((ulong)PayloadLength).ToBytes();
                 buffer[++pos] = 127;
 
-                buffer[++pos] = payLengthBytes[0];
-                buffer[++pos] = payLengthBytes[1];
-                buffer[++pos] = payLengthBytes[2];
-                buffer[++pos] = payLengthBytes[3];
-                buffer[++pos] = payLengthBytes[4];
-                buffer[++pos] = payLengthBytes[5];
-                buffer[++pos] = payLengthBytes[6];
-                buffer[++pos] = payLengthBytes[7];
+                buffer[++pos] = lenghts[0];
+                buffer[++pos] = lenghts[1];
+                buffer[++pos] = lenghts[2];
+                buffer[++pos] = lenghts[3];
+                buffer[++pos] = lenghts[4];
+                buffer[++pos] = lenghts[5];
+                buffer[++pos] = lenghts[6];
+                buffer[++pos] = lenghts[7];
             }
 
             if (Mask)

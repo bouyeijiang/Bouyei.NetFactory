@@ -1,11 +1,11 @@
-﻿using Bouyei.NetFactoryCore.Base;
+﻿using Bouyei.NetFactory.Base;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
+namespace Bouyei.NetFactory.Protocols.WebSocketProto
 {
-    public class DataFrameInfo
+    public class DataFrame
     {
         /// <summary>
         /// 如果为true则该消息为消息尾部,如果false为零则还有后续数据包;

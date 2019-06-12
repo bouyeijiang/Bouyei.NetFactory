@@ -19,11 +19,11 @@ namespace Bouyei.NetFactoryDemo
             //ConnectDemo();
             //ConnectionPoolTest();
             //ProtocolsDemo();
-            UdpDemo(); 
+            //UdpDemo(); 
             //TcpDemo();
             //ConnectionPoolManagerDemo();
             //PacketSocketDemo();
-            //WebSocketDemo();
+            WebSocketDemo();
         }
 
         private static void TcpDemo()

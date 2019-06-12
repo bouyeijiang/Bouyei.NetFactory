@@ -1,21 +1,22 @@
-﻿using Bouyei.NetFactoryCore.Base;
+﻿using Bouyei.NetFactory.Base;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
+namespace Bouyei.NetFactory.Protocols.WebSocketProto
 {
-    public class ServerPackage:DataFrameInfo
+    public class WebsocketFrame : DataFrame
     {
         private Encoding encoding = Encoding.UTF8;
         private const string acceptMask = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";//固定字符串
+        private readonly char[] splitChars = {':',' '};
 
-        public ServerPackage()
+        public WebsocketFrame()
         { }
 
-        public string RspAcceptPackage(AccessInfo access)
+        public SegmentOffset RspAcceptedFrame(AccessInfo access)
         {
-            var accept= new AcceptInfo()
+            var accept = new AcceptInfo()
             {
                 Connection = access.Connection,
                 Upgrade = access.Upgrade,
@@ -24,10 +25,43 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
                 SecWebSocketAccept = (access.SecWebSocketKey + acceptMask).ToSha1Base64()
             };
 
-            return accept.ToString();
+            return new SegmentOffset(encoding.GetBytes(accept.ToString()));
         }
 
-        public SegmentOffset GetBytes(string content)
+        public AcceptInfo ParseAcceptedFrame(string msg)
+        {
+            string[] msgs = msg.Split(Environment.NewLine.ToCharArray(),StringSplitOptions.RemoveEmptyEntries);
+            var acceptInfo = new AcceptInfo
+            {
+                HttpProto = msgs[0]
+            };
+
+            foreach (var item in msgs)
+            {
+                string[] kv = item.Split(splitChars,StringSplitOptions.RemoveEmptyEntries);
+                switch (kv[0])
+                {
+                    case "Upgrade":
+                        acceptInfo.Upgrade = kv[1];
+                        break;
+                    case "Connection":
+                        acceptInfo.Connection = kv[1];
+                        break;
+                    case "Sec-WebSocket-Accept":
+                        acceptInfo.SecWebSocketAccept = kv[1];
+                        break;
+                    case "Sec-WebSocket-Location":
+                        acceptInfo.SecWebSocketLocation = kv[1];
+                        break;
+                    case "Sec-WebSocket-Origin":
+                        acceptInfo.SecWebSocketOrigin = kv[1];
+                        break;
+                }
+            }
+            return acceptInfo;
+        }
+
+        public SegmentOffset ToSegmentFrame(string content)
         {
             var buf = encoding.GetBytes(content);
             Payload = new SegmentOffset()
@@ -35,47 +69,29 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
                 buffer = buf
             };
 
-            //Mask = true;
-            //MaskKey = new byte[4] {
-            //     1,3,
-            //     2,4
-            //};
-
-            //Payload.buffer = encoding.GetBytes(content);
             PayloadLength = Payload.buffer.LongLength;
 
             return new SegmentOffset(EncodingToBytes());
         }
 
-        public SegmentOffset GetBytes(byte[] buf)
+        public SegmentOffset ToSegmentFrame(byte[] buf, OpCodeType code = OpCodeType.Text)
         {
+            OpCode = (byte)code;
+
             Payload = new SegmentOffset()
             {
                 buffer = buf
             };
-
-            //Mask = true;
-            //MaskKey = new byte[4] {
-            //     1,3,
-            //     2,4
-            //};
-
-            //Payload.buffer = encoding.GetBytes(content);
             PayloadLength = Payload.buffer.LongLength;
 
             return new SegmentOffset(EncodingToBytes());
         }
 
-        public SegmentOffset GetBytes(OpCodeType code=OpCodeType.Bin)
+        public SegmentOffset ToSegmentFrame(SegmentOffset data, OpCodeType code = OpCodeType.Text)
         {
             OpCode = (byte)code;
 
-            if(Payload==null)
-            {
-                Payload = new SegmentOffset();
-                Payload.buffer = new byte[] { };
-            }
-
+            Payload = data;
             PayloadLength = Payload.buffer.LongLength;
 
             return new SegmentOffset(EncodingToBytes());
@@ -84,7 +100,7 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
         public AccessInfo GetHandshakePackage(SegmentOffset segOffset)
         {
             string msg = encoding.GetString(segOffset.buffer, segOffset.offset, segOffset.size);
-            string[] items = msg.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+            string[] items = msg.Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
             if (items.Length < 6)
                 throw new Exception("access format error..." + msg);
 
@@ -95,7 +111,7 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
 
             foreach (var item in items)
             {
-                string[] kv = item.Split(": ");
+                string[] kv = item.Split(splitChars,StringSplitOptions.RemoveEmptyEntries);
                 switch (kv[0])
                 {
                     case "Connection":
@@ -123,5 +139,16 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
             }
             return access;
         }
+    }
+
+    [Flags]
+    public enum OpCodeType : byte
+    {
+        Attach = 0x0,
+        Text = 0x1,
+        Bin = 0x2,
+        Close = 0x8,
+        Bing = 0x9,
+        Bong = 0xA,
     }
 }

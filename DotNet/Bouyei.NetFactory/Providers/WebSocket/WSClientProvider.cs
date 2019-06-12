@@ -84,7 +84,7 @@ namespace Bouyei.NetFactory.WebSocket
         {
             if (IsConnected == false) return false;
 
-            var buf = new ClientPackage().GetBytes(msg);
+            var buf = new WebsocketFrame().ToSegmentFrame(msg);
             clientProvider.Send(buf,waiting);
             return true;
         }
@@ -99,13 +99,13 @@ namespace Bouyei.NetFactory.WebSocket
 
         public void SendPong(SegmentOffset buf)
         {
-            var seg = new ClientPackage() { Payload = buf }.GetBytes(OpCodeType.Bong);
+            var seg = new WebsocketFrame().ToSegmentFrame(buf,OpCodeType.Bong);
             clientProvider.Send(seg, true);
         }
 
         public void SendPing()
         {
-            var buf = new ClientPackage().GetBytes(OpCodeType.Bing);
+            var buf = new WebsocketFrame().ToSegmentFrame(new byte[] { },OpCodeType.Bing);
             clientProvider.Send(buf, true);
         }
 
@@ -120,7 +120,7 @@ namespace Bouyei.NetFactory.WebSocket
             if (IsConnected == false)
             {
                 string msg = encoding.GetString(session.Data.buffer, session.Data.offset, session.Data.size);
-                acceptInfo = new ClientPackage().GetAcceptPackage(msg);
+                acceptInfo = new WebsocketFrame().ParseAcceptedFrame(msg);
 
                 if ((IsConnected = acceptInfo.IsHandShaked()))
                 {
@@ -134,8 +134,10 @@ namespace Bouyei.NetFactory.WebSocket
             }
             else
             {
-                ClientPackage packet = new ClientPackage();
-                packet.DecodingFromBytes(session.Data, true);
+                WebsocketFrame packet = new WebsocketFrame();
+                bool isOk= packet.DecodingFromBytes(session.Data, true);
+                if (isOk == false) return;
+
                 if (packet.OpCode == 0x01)
                 {
                     if (OnReceived != null)

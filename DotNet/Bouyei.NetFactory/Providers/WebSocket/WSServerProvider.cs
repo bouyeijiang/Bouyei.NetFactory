@@ -94,7 +94,7 @@ namespace Bouyei.NetFactory.WebSocket
 
         public bool Send(SocketToken sToken, string content,bool waiting=true)
         {
-           var buffer = new ServerPackage().GetBytes(content);
+           var buffer = new WebsocketFrame().ToSegmentFrame(content);
 
             return serverProvider.Send(new SegmentToken(sToken, buffer),waiting);
         }
@@ -111,9 +111,7 @@ namespace Bouyei.NetFactory.WebSocket
 
         private void SendPong(SegmentToken session)
         {
-            var buffer = new ServerPackage() {
-                 Payload=session.Data
-            }.GetBytes(OpCodeType.Bong);
+            var buffer = new WebsocketFrame().ToSegmentFrame(session.Data,OpCodeType.Bong);
 
             serverProvider.Send(new SegmentToken(session.sToken, buffer));
         }
@@ -155,9 +153,9 @@ namespace Bouyei.NetFactory.WebSocket
 
             if (connection.IsHandShaked == false)
             {
-                var serverPackage = new ServerPackage();
+                var serverFrame = new WebsocketFrame();
 
-                var access = serverPackage.GetHandshakePackage(session.Data);
+                var access = serverFrame.GetHandshakePackage(session.Data);
                 connection.IsHandShaked = access.IsHandShaked();
 
                 if (connection.IsHandShaked == false)
@@ -167,9 +165,9 @@ namespace Bouyei.NetFactory.WebSocket
                 }
                 connection.ConnectedTime = DateTime.Now;
 
-                string rsp = serverPackage.RspAcceptPackage(access);
+                var rsp = serverFrame.RspAcceptedFrame(access);
 
-                serverProvider.Send(new SegmentToken(session.sToken, encoding.GetBytes(rsp)));
+                serverProvider.Send(new SegmentToken(session.sToken, rsp));
 
                 connection.accessInfo = access;
 
@@ -179,8 +177,10 @@ namespace Bouyei.NetFactory.WebSocket
             {
                 RefreshTimeout(session.sToken);
 
-                ClientPackage packet = new ClientPackage();
-                packet.DecodingFromBytes(session.Data, true);
+                WebsocketFrame packet = new WebsocketFrame();
+                bool isOk = packet.DecodingFromBytes(session.Data, true);
+                if (isOk == false) return;
+
                 if (packet.OpCode == 0x01)//text
                 {
                     if (OnReceived != null)
