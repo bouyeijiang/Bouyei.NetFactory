@@ -22,7 +22,7 @@ namespace Bouyei.NetFactory.Protocols.WebSocketProto
                 Upgrade = access.Upgrade,
                 SecWebSocketLocation = access.Host,
                 SecWebSocketOrigin = access.Origin,
-                SecWebSocketAccept = (access.SecWebSocketKey + acceptMask).ToSha1Base64()
+                SecWebSocketAccept = (access.SecWebSocketKey + acceptMask).ToSha1Base64(encoding)
             };
 
             return new SegmentOffset(encoding.GetBytes(accept.ToString()));
