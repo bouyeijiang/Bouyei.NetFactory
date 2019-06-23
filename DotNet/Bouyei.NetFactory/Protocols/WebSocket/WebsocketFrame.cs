@@ -9,10 +9,12 @@ namespace Bouyei.NetFactory.Protocols.WebSocketProto
     {
         private Encoding encoding = Encoding.UTF8;
         private const string acceptMask = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";//固定字符串
-        private readonly char[] splitChars = {':',' '};
+        private readonly char[] splitChars =null;
 
         public WebsocketFrame()
-        { }
+        {
+            splitChars = BaseInfo.SplitChars.ToCharArray();
+        }
 
         public SegmentOffset RspAcceptedFrame(AccessInfo access)
         {
@@ -30,7 +32,7 @@ namespace Bouyei.NetFactory.Protocols.WebSocketProto
 
         public AcceptInfo ParseAcceptedFrame(string msg)
         {
-            string[] msgs = msg.Split(Environment.NewLine.ToCharArray(),StringSplitOptions.RemoveEmptyEntries);
+            string[] msgs = msg.Split(BaseInfo.NewLine.ToCharArray(),StringSplitOptions.RemoveEmptyEntries);
             var acceptInfo = new AcceptInfo
             {
                 HttpProto = msgs[0]
@@ -100,7 +102,8 @@ namespace Bouyei.NetFactory.Protocols.WebSocketProto
         public AccessInfo GetHandshakePackage(SegmentOffset segOffset)
         {
             string msg = encoding.GetString(segOffset.buffer, segOffset.offset, segOffset.size);
-            string[] items = msg.Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
+
+            string[] items = msg.Split(BaseInfo.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
             if (items.Length < 6)
                 throw new Exception("access format error..." + msg);
 

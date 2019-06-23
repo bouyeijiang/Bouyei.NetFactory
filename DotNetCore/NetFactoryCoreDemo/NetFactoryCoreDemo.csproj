@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.WebSockets" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Bouyei.NetFactoryCore\Bouyei.NetFactoryCore.csproj" />
   </ItemGroup>
 

@@ -27,9 +27,9 @@ namespace Bouyei.NetFactory.Protocols.WebSocketProto
 
             return string.Format("{0}{1}{2}{3}",
                 HttpProto + NewLine,
-                "Connection: " + Connection + NewLine,
-                "Upgrade: " + Upgrade + NewLine,
-                 "Sec-WebSocket-Accept: " + SecWebSocketAccept + NewLine + NewLine//很重要，需要两个newline
+                "Connection" + SplitChars + Connection + NewLine,
+                "Upgrade" + SplitChars + Upgrade + NewLine,
+                 "Sec-WebSocket-Accept" + SplitChars + SecWebSocketAccept + NewLine + NewLine//很重要，需要两个newline
                 );
         }
 

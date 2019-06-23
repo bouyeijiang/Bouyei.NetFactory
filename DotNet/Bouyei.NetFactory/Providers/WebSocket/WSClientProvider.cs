@@ -49,22 +49,16 @@ namespace Bouyei.NetFactory.WebSocket
         /// <returns></returns>
         public bool Connect(string wsUrl)
         {
-            string[] urlParams = wsUrl.Split(':');
-            if (wsUrl.Length < 3)
-                throw new Exception("wsUrl is error format.for example as ws://localhost:80");
-
-            urlParams[1] = urlParams[1].Replace("//", "");
-
             Random rand = new Random(DateTime.Now.Millisecond);
-            string host = urlParams[1] + ":" + urlParams[2];
- 
-            bool isOk = clientProvider.ConnectTo(int.Parse(urlParams[2]), urlParams[1]);
+            WSConnectionItem wsItem = new WSConnectionItem(wsUrl);
+
+            bool isOk = clientProvider.ConnectTo(wsItem.Port, wsItem.Domain);
             if (isOk == false) throw new Exception("连接失败...");
 
             string req = new AccessInfo()
             {
-                Host = host,
-                Origin = "http://" + host,
+                Host = wsItem.Host,
+                Origin = "http://" + wsItem.Host,
                 SecWebSocketKey = Convert.ToBase64String(encoding.GetBytes(wsUrl + rand.Next(100, 100000).ToString()))
             }.ToString();
 
@@ -75,9 +69,9 @@ namespace Bouyei.NetFactory.WebSocket
             return IsConnected;
         }
 
-        public bool Connect(UrlInfo url)
+        public bool Connect(WSConnectionItem wsUrl)
         {
-            return Connect(string.Format("{0}://{1}:{2}", url.Proto, url.Domain, url.Port));
+            return Connect(wsUrl);
         }
 
         public bool Send(string msg,bool waiting=true)

@@ -28,7 +28,7 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
 
         public AcceptInfo ParseAcceptedFrame(string msg)
         {
-            string[] msgs = msg.Split(Environment.NewLine);
+            string[] msgs = msg.Split(BaseInfo.NewLine);
             var acceptInfo = new AcceptInfo
             {
                 HttpProto = msgs[0]
@@ -36,7 +36,7 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
 
             foreach (var item in msgs)
             {
-                string[] kv = item.Split(": ");
+                string[] kv = item.Split(BaseInfo.SplitChars);
                 switch (kv[0])
                 {
                     case "Upgrade":
@@ -98,7 +98,7 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
         public AccessInfo GetHandshakePackage(SegmentOffset segOffset)
         {
             string msg = encoding.GetString(segOffset.buffer, segOffset.offset, segOffset.size);
-            string[] items = msg.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+            string[] items = msg.Split(BaseInfo.NewLine, StringSplitOptions.RemoveEmptyEntries);
             if (items.Length < 6)
                 throw new Exception("access format error..." + msg);
 
@@ -109,7 +109,7 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
 
             foreach (var item in items)
             {
-                string[] kv = item.Split(": ");
+                string[] kv = item.Split(BaseInfo.SplitChars);
                 switch (kv[0])
                 {
                     case "Connection":

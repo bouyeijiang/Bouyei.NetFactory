@@ -2,108 +2,127 @@
 using System.Text;
 using System.Threading;
 using Bouyei.NetFactoryCore;
+using System.Net.WebSockets;
 
 namespace NetFactoryCoreDemo
 {
     using Bouyei.NetFactoryCore.WebSocket;
-    using Bouyei.NetFactoryCore.Protocols.WebSocketProto;
     using System.Collections.Generic;
 
     class Program
     {
+
         static void Main(string[] args)
         {
            WebSocketDemo();
-             //TcpDemo();
+            // TcpDemo();
             //UdpDemo();
             //ConnectionPoolTest();
+        }
+
+        private void SysWebsocket()
+        {
+           
         }
 
         private static void TcpDemo()
         {
             int port = 12346;
             //服务端
-            INetServerProvider serverSocket = NetServerProvider.CreateProvider();
-            INetTokenPoolProvider poolProvider = NetTokenPoolProvider.CreateProvider(1000 * 180);
-             
-            serverSocket.ReceivedOffsetHandler = new OnReceivedSegmentHandler((SegmentToken session) =>
+            INetClientProvider clientSocket = NetClientProvider.CreateProvider();
+            clientSocket.ReceivedHandler = new OnReceivedHandler((SocketToken sToken, string content) =>
             {
-                try
-                {
-                    Console.WriteLine("from client "+Encoding.Default.GetString(session.Data.buffer,session.Data.offset,session.Data.size));
-                    serverSocket.Send(new SegmentToken(session.sToken, Encoding.Default.GetBytes("i'm server")));
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.ToString());
-                }
-            });
-            serverSocket.AcceptedHandler = new OnAcceptedHandler((sToken) =>
-            {
-                poolProvider.InsertToken(new Bouyei.NetFactoryCore.Pools.NetConnectionToken(sToken));
-
-                serverSocket.Send(new SegmentToken()
-                {
-                    sToken = sToken,
-                    Data = new SegmentOffset()
-                    {
-                        buffer = Encoding.Default.GetBytes("welcome" + DateTime.Now.ToString())
-                    }
-                }, false);
-
-                Console.WriteLine("accept" + sToken.TokenIpEndPoint);
+                Console.WriteLine(content);
             });
 
-            serverSocket.DisconnectedHandler = new OnDisconnectedHandler((stoken) =>
-            {
-                poolProvider.RemoveToken(new Bouyei.NetFactoryCore.Pools.NetConnectionToken(stoken));
+             bool isOk= clientSocket.ConnectTo(port, "192.168.2.117");
 
-                Console.WriteLine("disconnect" + stoken.TokenId);
-            });
-
-            bool isOk = serverSocket.Start(port);
             if (isOk)
             {
-                Console.WriteLine("已启动服务。。。");
-
-                //客户端
-                INetClientProvider clientSocket = NetClientProvider.CreateProvider();
-
-                //异步连接
-                clientSocket.ReceivedOffsetHandler = new OnReceivedSegmentHandler((SegmentToken session) =>
-                {
-                    try
-                    {
-                       Console.WriteLine("from server:" + Encoding.Default.GetString(session.Data.buffer,session.Data.offset,session.Data.size));
-                    }
-                    catch (Exception ex)
-                    {
-
-                    }
-                });
-                clientSocket.DisconnectedHandler = new OnDisconnectedHandler((stoken) =>
-                {
-                    Console.WriteLine("clinet discount");
-                });
-                again:
-                bool rt = clientSocket.ConnectTo(port, "127.0.0.1");/* 10.152.0.71*/
-                if (rt)
-                {
-                    for (int i = 0; i < 10000; i++)
-                    {
-                        // Thread.Sleep(50);
-                        if (i % 100 == 0)
-                        {
-                            Console.WriteLine(clientSocket.BufferPoolCount + ":" + i);
-                        }
-                        bool isTrue = clientSocket.Send(new SegmentOffset(Encoding.Default.GetBytes("hello"+DateTime.Now)), false);
-                        //if (isTrue == false) break;
-                        //break;
-                    }
-                }
+                clientSocket.Send(new SegmentOffset(Encoding.UTF8.GetBytes("hello 我是...")));
             }
+
+            //INetServerProvider serverSocket = NetServerProvider.CreateProvider();
+            //INetTokenPoolProvider poolProvider = NetTokenPoolProvider.CreateProvider(1000 * 180);
+
+            //serverSocket.ReceivedOffsetHandler = new OnReceivedSegmentHandler((SegmentToken session) =>
+            //{
+            //    try
+            //    {
+            //        Console.WriteLine("from client "+Encoding.Default.GetString(session.Data.buffer,session.Data.offset,session.Data.size));
+            //        serverSocket.Send(new SegmentToken(session.sToken, Encoding.Default.GetBytes("i'm server")));
+            //    }
+            //    catch (Exception ex)
+            //    {
+            //        Console.WriteLine(ex.ToString());
+            //    }
+            //});
+            //serverSocket.AcceptedHandler = new OnAcceptedHandler((sToken) =>
+            //{
+            //    poolProvider.InsertToken(new Bouyei.NetFactoryCore.Pools.NetConnectionToken(sToken));
+
+            //    serverSocket.Send(new SegmentToken()
+            //    {
+            //        sToken = sToken,
+            //        Data = new SegmentOffset()
+            //        {
+            //            buffer = Encoding.Default.GetBytes("welcome" + DateTime.Now.ToString())
+            //        }
+            //    }, false);
+
+            //    Console.WriteLine("accept" + sToken.TokenIpEndPoint);
+            //});
+
+            //serverSocket.DisconnectedHandler = new OnDisconnectedHandler((stoken) =>
+            //{
+            //    poolProvider.RemoveToken(new Bouyei.NetFactoryCore.Pools.NetConnectionToken(stoken));
+
+            //    Console.WriteLine("disconnect" + stoken.TokenId);
+            //});
+
+            //bool isOk = serverSocket.Start(port);
+            //if (isOk)
+            //{
+            //    Console.WriteLine("已启动服务。。。");
+
+            //    //客户端
+            //    INetClientProvider clientSocket = NetClientProvider.CreateProvider();
+
+            //    //异步连接
+            //    clientSocket.ReceivedOffsetHandler = new OnReceivedSegmentHandler((SegmentToken session) =>
+            //    {
+            //        try
+            //        {
+            //           Console.WriteLine("from server:" + Encoding.Default.GetString(session.Data.buffer,session.Data.offset,session.Data.size));
+            //        }
+            //        catch (Exception ex)
+            //        {
+
+            //        }
+            //    });
+            //    clientSocket.DisconnectedHandler = new OnDisconnectedHandler((stoken) =>
+            //    {
+            //        Console.WriteLine("clinet discount");
+            //    });
+            //    again:
+            //    bool rt = clientSocket.ConnectTo(port, "127.0.0.1");/* 10.152.0.71*/
+            //    if (rt)
+            //    {
+            //        for (int i = 0; i < 100; i++)
+            //        {
+            //            // Thread.Sleep(50);
+            //            if (i % 100 == 0)
+            //            {
+            //                Console.WriteLine(clientSocket.BufferPoolCount + ":" + i);
+            //            }
+            //            bool isTrue = clientSocket.Send(new SegmentOffset(Encoding.Default.GetBytes("hello"+DateTime.Now)), false);
+            //            //if (isTrue == false) break;
+            //            //break;
+            //        }
+            //    }
+            //}
             Console.ReadKey();
-            serverSocket.Dispose();
+            //serverSocket.Dispose();
         }
        
         private static void WebSocketDemo()
@@ -125,8 +144,9 @@ namespace NetFactoryCoreDemo
                 Console.WriteLine("receive bytes:"+Encoding.UTF8.GetString(data.Data.buffer,
                     data.Data.offset,data.Data.size));
             });
-            bool isOk = wsService.Start(65531);
-            if(isOk)
+            bool isOk = false;
+            isOk= wsService.Start(65531);
+            if (isOk)
             {
                 Console.WriteLine("waiting for accept...");
 

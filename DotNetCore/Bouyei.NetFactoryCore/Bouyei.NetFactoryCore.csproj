@@ -1,19 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>bouyei.pfx</AssemblyOriginatorKeyFile>
-    <Version>1.3.3</Version>
-    <AssemblyVersion>1.3.3.3</AssemblyVersion>
-    <FileVersion>1.3.3.3</FileVersion>
+    <Version>1.3.4</Version>
+    <AssemblyVersion>1.3.3.4</AssemblyVersion>
+    <FileVersion>1.3.3.4</FileVersion>
     <Copyright>bouyei</Copyright>
-    <PackageProjectUrl>https://gitee.com/bouyei/Bouyei.NetFactory</PackageProjectUrl>
+    <PackageProjectUrl>https://gitee.com/bouyei/Bouyei.NetFactoryCore</PackageProjectUrl>
     <PackageLicenseUrl>https://gitee.com/bouyei/Bouyei.NetProviderFactory</PackageLicenseUrl>
-    <RepositoryUrl>https://gitee.com/bouyei/Bouyei.NetFactory</RepositoryUrl>
+    <RepositoryUrl>https://gitee.com/bouyei/Bouyei.NetFactoryCore</RepositoryUrl>
     <Description>hight performance socket library,base on SocketAsyncEventArgs(IOCP)</Description>
-    <PackageReleaseNotes>base on SocketAsyncEventArgs(IOCP)</PackageReleaseNotes>
+    <PackageReleaseNotes>base on Socket</PackageReleaseNotes>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

@@ -55,7 +55,7 @@
     <Compile Include="Protocols\WebSocket\AccessInfo.cs" />
     <Compile Include="Protocols\WebSocket\DataFrame.cs" />
     <Compile Include="Providers\WebSocket\SslHelper.cs" />
-    <Compile Include="Protocols\WebSocket\UrlInfo.cs" />
+    <Compile Include="Providers\WebSocket\WSConnectionItem.cs" />
     <Compile Include="Protocols\WebSocket\WebsocketFrame.cs" />
     <Compile Include="Providers\Interface\INetClientProvider.cs" />
     <Compile Include="Providers\Interface\INetProtocolProvider.cs" />

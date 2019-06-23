@@ -38,12 +38,12 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
 
             return string.Format("{0}{1}{2}{3}{4}{5}{6}",
                 HttpProto + NewLine,
-                "Host: " + Host + NewLine,
-                "Connection: " + Connection + NewLine,
-                "Upgrade: " + Upgrade + NewLine,
-                "Origin: " + Origin + NewLine,
-                "Sec-WebSocket-Version: " + SecWebSocketVersion + NewLine,
-                "Sec-WebSocket-Key: " + SecWebSocketKey + NewLine+NewLine);
+                "Host" + SplitChars + Host + NewLine,
+                "Connection" + SplitChars + Connection + NewLine,
+                "Upgrade" + SplitChars + Upgrade + NewLine,
+                "Origin" + SplitChars + Origin + NewLine,
+                "Sec-WebSocket-Version" + SplitChars + SecWebSocketVersion + NewLine,
+                "Sec-WebSocket-Key" + SplitChars + SecWebSocketKey + NewLine + NewLine);
         }
 
         public bool IsHandShaked()
@@ -67,7 +67,8 @@ namespace Bouyei.NetFactoryCore.Protocols.WebSocketProto
         /// </summary>
         public string Upgrade { get; set; }
 
-        protected const string NewLine = "\r\n";
+        internal const string NewLine = "\r\n";
+        internal const string SplitChars = ": ";
 
         public BaseInfo()
         {
