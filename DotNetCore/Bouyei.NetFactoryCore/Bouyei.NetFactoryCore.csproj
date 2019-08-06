@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
@@ -12,7 +12,7 @@
     <PackageProjectUrl>https://gitee.com/bouyei/Bouyei.NetFactoryCore</PackageProjectUrl>
     <PackageLicenseUrl>https://gitee.com/bouyei/Bouyei.NetProviderFactory</PackageLicenseUrl>
     <RepositoryUrl>https://gitee.com/bouyei/Bouyei.NetFactoryCore</RepositoryUrl>
-    <Description>hight performance socket library,base on SocketAsyncEventArgs(IOCP)</Description>
+    <Description>hight performance socket library,base on SocketAsyncEventArgs</Description>
     <PackageReleaseNotes>base on Socket</PackageReleaseNotes>
   </PropertyGroup>
 

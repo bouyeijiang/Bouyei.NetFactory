@@ -156,14 +156,14 @@ namespace Bouyei.NetFactoryCore.Pools
         {
             using (LockWait lwait = new LockWait(ref lockParam))
             {
-                foreach (var item in list)
+                var items = list.Where(x => x.Verification == false ||
+                 DateTime.Now.Subtract(x.ConnectionTime).TotalSeconds >= ConnectionTimeout)
+                    .ToArray();
+
+                for (int i = 0; i < items.Length; ++i)
                 {
-                    if (item.Verification == false 
-                        || DateTime.Now.Subtract(item.ConnectionTime).TotalSeconds >= ConnectionTimeout)
-                    {
-                        item.Token.Close();
-                        list.Remove(item);
-                    }
+                    items[i].Token.Close();
+                    list.Remove(items[i]);
                 }
             }
         }
