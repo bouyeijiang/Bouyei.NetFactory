@@ -1,13 +1,13 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>bouyei.pfx</AssemblyOriginatorKeyFile>
-    <Version>1.3.4</Version>
-    <AssemblyVersion>1.3.3.4</AssemblyVersion>
-    <FileVersion>1.3.3.4</FileVersion>
+    <Version>1.3.4.3</Version>
+    <AssemblyVersion>1.3.4.3</AssemblyVersion>
+    <FileVersion>1.3.4.3</FileVersion>
     <Copyright>bouyei</Copyright>
     <PackageProjectUrl>https://gitee.com/bouyei/Bouyei.NetFactoryCore</PackageProjectUrl>
     <PackageLicenseUrl>https://gitee.com/bouyei/Bouyei.NetProviderFactory</PackageLicenseUrl>
